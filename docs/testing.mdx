@@ -1,0 +1,671 @@
+---
+id: testing
+title: Software Testing
+---
+
+import TestingImage from '/img/undraw_bug_fixing.svg';
+
+<div className="text--center margin-bottom--lg">
+  <TestingImage width="80%" height="300px" />
+</div>
+
+## Introduction
+
+Software testing is a critical process that validates and verifies that a software application or system meets its
+requirements and functions as expected. Effective testing not only catches bugs before they reach production but also
+ensures code quality, improves reliability, and builds confidence in your software. In modern software development,
+testing is not an afterthought—it's an integral part of the development lifecycle.
+
+This chapter explores the fundamental concepts of software testing, different testing strategies, best practices, and
+how to build a robust testing culture in your team.
+
+## The Testing Pyramid
+
+The testing pyramid is a framework that helps teams optimize their testing strategy by balancing different types of
+tests based on cost, speed, and value.
+
+```mermaid
+graph TB
+    subgraph "Testing Pyramid"
+        E2E["End-to-End Tests<br/>(Few, Slow, Expensive)"]
+        INT["Integration Tests<br/>(Moderate Number)"]
+        UNIT["Unit Tests<br/>(Many, Fast, Cheap)"]
+    end
+
+    UNIT --> INT
+    INT --> E2E
+
+    style E2E fill:#ff6b6b
+    style INT fill:#ffd93d
+    style UNIT fill:#6bcf7f
+```
+
+### Unit Tests
+
+Unit tests verify individual components or functions in isolation. They are:
+
+- **Fast**: Execute in milliseconds
+- **Isolated**: Test one thing at a time
+- **Reliable**: Deterministic and independent
+- **Cheap**: Easy to write and maintain
+
+**Example (JavaScript with Jest):**
+
+```javascript
+// Good: Testing a pure function
+function calculateTotalPrice(items, taxRate) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('Items must be a non-empty array');
+  }
+
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return subtotal * (1 + taxRate);
+}
+
+// Unit test
+describe('calculateTotalPrice', () => {
+  it('should calculate total price with tax', () => {
+    const items = [
+      { price: 10, quantity: 2 },
+      { price: 5, quantity: 3 },
+    ];
+
+    const total = calculateTotalPrice(items, 0.1);
+    expect(total).toBe(38.5); // (20 + 15) * 1.1
+  });
+
+  it('should throw error for empty items', () => {
+    expect(() => calculateTotalPrice([], 0.1)).toThrow('Items must be a non-empty array');
+  });
+});
+```
+
+### Integration Tests
+
+Integration tests verify that different modules or services work together correctly. They test:
+
+- **Database interactions**: Queries, transactions, migrations
+- **API endpoints**: Request/response handling
+- **Third-party services**: External API integrations
+- **Module interactions**: Communication between components
+
+**Example (Node.js with Supertest):**
+
+```javascript
+// Good: Testing API endpoint with database
+describe('POST /api/users', () => {
+  it('should create a new user', async () => {
+    const response = await request(app)
+      .post('/api/users')
+      .send({
+        email: 'test@example.com',
+        name: 'Test User',
+      })
+      .expect(201);
+
+    expect(response.body).toHaveProperty('id');
+    expect(response.body.email).toBe('test@example.com');
+
+    // Verify user was created in database
+    const user = await User.findById(response.body.id);
+    expect(user).toBeTruthy();
+    expect(user.name).toBe('Test User');
+  });
+});
+```
+
+### End-to-End Tests
+
+End-to-end tests simulate real user scenarios and verify the entire application flow from start to finish. They are:
+
+- **Comprehensive**: Test complete user journeys
+- **Realistic**: Use real browsers and environments
+- **Slower**: Take longer to execute
+- **Fragile**: More prone to flakiness
+
+**Example (Playwright):**
+
+```javascript
+// Good: Testing complete user flow
+test('user can complete checkout process', async ({ page }) => {
+  // Login
+  await page.goto('/login');
+  await page.fill('[name="email"]', 'user@example.com');
+  await page.fill('[name="password"]', 'password123');
+  await page.click('button[type="submit"]');
+
+  // Add items to cart
+  await page.goto('/products');
+  await page.click('[data-testid="add-to-cart-1"]');
+  await page.click('[data-testid="add-to-cart-2"]');
+
+  // Checkout
+  await page.click('[data-testid="cart-icon"]');
+  await page.click('button:has-text("Checkout")');
+
+  // Fill shipping information
+  await page.fill('[name="address"]', '123 Main St');
+  await page.fill('[name="city"]', 'New York');
+  await page.click('button:has-text("Continue")');
+
+  // Verify order confirmation
+  await expect(page.locator('h1')).toContainText('Order Confirmed');
+});
+```
+
+## Testing Strategies
+
+### Test-Driven Development (TDD)
+
+TDD is a development methodology where you write tests before writing the implementation code.
+
+```mermaid
+flowchart LR
+    A[Write Test] --> B[Run Test<br/>Watch it Fail]
+    B --> C[Write Code]
+    C --> D[Run Test<br/>Watch it Pass]
+    D --> E[Refactor]
+    E --> A
+
+    style A fill:#6bcf7f
+    style B fill:#ff6b6b
+    style C fill:#4ecdc4
+    style D fill:#6bcf7f
+    style E fill:#ffd93d
+```
+
+**Benefits:**
+
+- Forces you to think about requirements first
+- Results in better test coverage
+- Leads to more modular, testable code
+- Provides fast feedback loop
+
+**Example TDD Workflow:**
+
+```javascript
+// Step 1: Write the test first (Red)
+describe('UserValidator', () => {
+  it('should validate email format', () => {
+    const validator = new UserValidator();
+    expect(validator.isValidEmail('test@example.com')).toBe(true);
+    expect(validator.isValidEmail('invalid-email')).toBe(false);
+  });
+});
+
+// Step 2: Run test - it fails (Red)
+// Step 3: Write minimum code to pass (Green)
+class UserValidator {
+  isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+}
+
+// Step 4: Run test - it passes (Green)
+// Step 5: Refactor if needed while keeping tests green
+```
+
+### Behavior-Driven Development (BDD)
+
+BDD extends TDD by using natural language to describe test scenarios, making tests readable by non-technical
+stakeholders.
+
+**Example (Cucumber/Gherkin syntax):**
+
+```gherkin
+Feature: User Authentication
+  As a user
+  I want to log in to the application
+  So that I can access my account
+
+  Scenario: Successful login with valid credentials
+    Given I am on the login page
+    When I enter "user@example.com" in the email field
+    And I enter "password123" in the password field
+    And I click the "Login" button
+    Then I should see the dashboard page
+    And I should see a welcome message "Welcome back, User!"
+
+  Scenario: Failed login with invalid credentials
+    Given I am on the login page
+    When I enter "user@example.com" in the email field
+    And I enter "wrongpassword" in the password field
+    And I click the "Login" button
+    Then I should see an error message "Invalid credentials"
+    And I should remain on the login page
+```
+
+### Branch-Based Testing
+
+[Branch-Based Testing](/branch-based-testing) is a modern testing strategy where each feature branch is tested in an
+isolated, ephemeral environment before merging. This approach allows teams to:
+
+- Test new features in production-like environments
+- Catch integration issues early
+- Enable stakeholder review with real URLs
+- Reduce conflicts and deployment risks
+
+Branch-based testing is particularly valuable in continuous delivery pipelines and microservices architectures. Learn
+more about this strategy in the dedicated [Branch-Based Testing chapter](/branch-based-testing).
+
+## Testing Best Practices
+
+### 1. Follow the AAA Pattern
+
+Structure your tests using the Arrange-Act-Assert pattern for clarity:
+
+```javascript
+// Good: Clear AAA structure
+test('should calculate discount correctly', () => {
+  // Arrange
+  const cart = new ShoppingCart();
+  cart.addItem({ price: 100, quantity: 2 });
+  const discountCode = 'SAVE20';
+
+  // Act
+  const total = cart.applyDiscount(discountCode);
+
+  // Assert
+  expect(total).toBe(160); // 200 - 20% = 160
+});
+
+// Bad: Mixed responsibilities
+test('should work', () => {
+  const cart = new ShoppingCart();
+  expect(cart.addItem({ price: 100, quantity: 2 })).toBe(true);
+  expect(cart.applyDiscount('SAVE20')).toBe(160);
+  expect(cart.items.length).toBe(1);
+});
+```
+
+### 2. Write Independent Tests
+
+Each test should be able to run independently in any order:
+
+```javascript
+// Good: Independent tests
+beforeEach(() => {
+  database.clear();
+  mockServer.reset();
+});
+
+test('should create user', async () => {
+  const user = await createUser({ name: 'Alice' });
+  expect(user.id).toBeDefined();
+});
+
+test('should find user by email', async () => {
+  await createUser({ email: 'test@example.com' });
+  const user = await findUserByEmail('test@example.com');
+  expect(user).toBeTruthy();
+});
+
+// Bad: Tests depend on each other
+let userId;
+
+test('should create user', async () => {
+  const user = await createUser({ name: 'Alice' });
+  userId = user.id; // Shared state
+});
+
+test('should update user', async () => {
+  await updateUser(userId, { name: 'Bob' }); // Depends on previous test
+});
+```
+
+### 3. Test Behavior, Not Implementation
+
+Focus on what the code does, not how it does it:
+
+```javascript
+// Good: Testing behavior
+test('should notify users when order is shipped', async () => {
+  const order = await createOrder({ userId: 1, items: [...] });
+
+  await shipOrder(order.id);
+
+  const notifications = await getNotifications(order.userId);
+  expect(notifications).toContainEqual(
+    expect.objectContaining({
+      type: 'ORDER_SHIPPED',
+      orderId: order.id
+    })
+  );
+});
+
+// Bad: Testing implementation details
+test('should call sendEmail with correct parameters', async () => {
+  const sendEmailSpy = jest.spyOn(emailService, 'sendEmail');
+
+  await shipOrder(orderId);
+
+  expect(sendEmailSpy).toHaveBeenCalledWith(
+    'user@example.com',
+    'Order Shipped',
+    expect.any(String)
+  );
+});
+```
+
+### 4. Use Descriptive Test Names
+
+Test names should clearly describe what is being tested:
+
+```javascript
+// Good: Descriptive names
+describe('OrderService', () => {
+  describe('cancelOrder', () => {
+    it('should refund payment when order is cancelled within 24 hours', async () => {
+      // ...
+    });
+
+    it('should not refund payment when order is cancelled after 24 hours', async () => {
+      // ...
+    });
+
+    it('should throw error when order is already shipped', async () => {
+      // ...
+    });
+  });
+});
+
+// Bad: Vague names
+test('test1', () => {
+  /* ... */
+});
+test('should work correctly', () => {
+  /* ... */
+});
+test('cancellation', () => {
+  /* ... */
+});
+```
+
+### 5. Keep Tests Fast
+
+Slow tests discourage running them frequently:
+
+```javascript
+// Good: Fast test with mocks
+test('should process payment', async () => {
+  const mockPaymentGateway = {
+    charge: jest.fn().mockResolvedValue({ success: true, transactionId: '123' }),
+  };
+
+  const service = new PaymentService(mockPaymentGateway);
+  const result = await service.processPayment({ amount: 100 });
+
+  expect(result.success).toBe(true);
+});
+
+// Bad: Slow test with real API calls
+test('should process payment', async () => {
+  const service = new PaymentService(realPaymentGateway);
+  const result = await service.processPayment({ amount: 100 }); // Real API call
+
+  expect(result.success).toBe(true);
+}); // Takes 2-3 seconds
+```
+
+## Test Coverage
+
+Test coverage measures the percentage of your code that is executed during tests. While 100% coverage doesn't guarantee
+bug-free code, it helps identify untested code paths.
+
+```mermaid
+graph LR
+    A[Write Code] --> B[Run Tests]
+    B --> C{Coverage < Target?}
+    C -->|Yes| D[Identify Gaps]
+    D --> E[Write Tests]
+    E --> B
+    C -->|No| F[Review Quality]
+    F --> G{Quality OK?}
+    G -->|Yes| H[Done]
+    G -->|No| D
+
+    style A fill:#4ecdc4
+    style H fill:#6bcf7f
+    style D fill:#ffd93d
+```
+
+### Coverage Metrics
+
+- **Line Coverage**: Percentage of code lines executed
+- **Branch Coverage**: Percentage of decision branches taken
+- **Function Coverage**: Percentage of functions called
+- **Statement Coverage**: Percentage of statements executed
+
+**Example Coverage Report:**
+
+```javascript
+// jest.config.js
+module.exports = {
+  collectCoverage: true,
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+  },
+  coveragePathIgnorePatterns: ['/node_modules/', '/tests/', '/dist/'],
+};
+```
+
+:::warning High test coverage doesn't guarantee high code quality. Focus on meaningful tests that validate important
+behaviors, not just coverage numbers. :::
+
+## Common Testing Anti-Patterns
+
+### 1. Testing Implementation Details
+
+```javascript
+// Bad: Testing internal state
+test('should set isLoading to true', () => {
+  const component = new Component();
+  component.fetchData();
+  expect(component.isLoading).toBe(true); // Testing internal state
+});
+
+// Good: Testing observable behavior
+test('should show loading spinner while fetching data', async () => {
+  render(<Component />);
+  const loadingSpinner = screen.getByTestId('loading');
+  expect(loadingSpinner).toBeInTheDocument();
+});
+```
+
+### 2. Excessive Mocking
+
+```javascript
+// Bad: Mocking everything
+test('should process order', async () => {
+  const mockDb = { save: jest.fn() };
+  const mockPayment = { charge: jest.fn() };
+  const mockEmail = { send: jest.fn() };
+  const mockLogger = { log: jest.fn() };
+  const mockCache = { set: jest.fn() };
+  // ... testing nothing real
+});
+
+// Good: Mock only external dependencies
+test('should process order', async () => {
+  const mockPaymentGateway = { charge: jest.fn().mockResolvedValue({ success: true }) };
+  // Use real database (test DB) and real business logic
+});
+```
+
+### 3. Flaky Tests
+
+```javascript
+// Bad: Time-dependent test
+test('should expire after 5 seconds', async () => {
+  const cache = new Cache();
+  cache.set('key', 'value', 5000);
+
+  await sleep(5100);
+  expect(cache.get('key')).toBeUndefined(); // Flaky: timing issues
+});
+
+// Good: Deterministic test
+test('should expire after TTL', () => {
+  const cache = new Cache();
+  const mockDate = new Date('2024-01-01T00:00:00Z');
+  jest.setSystemTime(mockDate);
+
+  cache.set('key', 'value', 5000);
+
+  jest.setSystemTime(new Date('2024-01-01T00:00:06Z'));
+  expect(cache.get('key')).toBeUndefined();
+});
+```
+
+## Testing Tools and Frameworks
+
+### JavaScript/TypeScript
+
+- **Jest**: Full-featured testing framework
+- **Vitest**: Fast, Vite-native unit testing
+- **Playwright/Cypress**: E2E testing
+- **React Testing Library**: Component testing
+- **Supertest**: API testing
+
+### Python
+
+- **pytest**: Popular testing framework
+- **unittest**: Built-in testing framework
+- **Selenium**: Browser automation
+
+### Java
+
+- **JUnit**: Standard unit testing
+- **Mockito**: Mocking framework
+- **TestNG**: Testing framework with advanced features
+
+### Go
+
+- **testing**: Built-in testing package
+- **testify**: Testing toolkit with assertions
+
+## Continuous Testing
+
+Integrate testing into your CI/CD pipeline to catch issues early:
+
+```mermaid
+flowchart LR
+    A[Code Commit] --> B[Unit Tests]
+    B --> C{Pass?}
+    C -->|No| D[Notify Developer]
+    C -->|Yes| E[Integration Tests]
+    E --> F{Pass?}
+    F -->|No| D
+    F -->|Yes| G[E2E Tests]
+    G --> H{Pass?}
+    H -->|No| D
+    H -->|Yes| I[Deploy to Staging]
+    I --> J[Smoke Tests]
+    J --> K{Pass?}
+    K -->|No| D
+    K -->|Yes| L[Deploy to Production]
+
+    style A fill:#4ecdc4
+    style L fill:#6bcf7f
+    style D fill:#ff6b6b
+```
+
+**Example GitHub Actions Workflow:**
+
+```yaml
+name: Test Suite
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+```
+
+## Conclusion
+
+Effective software testing is essential for building reliable, maintainable applications. By following the testing
+pyramid, implementing appropriate testing strategies like TDD, BDD, and [branch-based testing](/branch-based-testing),
+and adhering to best practices, you can create a robust test suite that provides confidence in your code.
+
+Key takeaways:
+
+- **Write tests at multiple levels**: Balance unit, integration, and E2E tests
+- **Test behavior, not implementation**: Focus on what your code does
+- **Keep tests fast and independent**: Enable quick feedback loops
+- **Integrate testing into CI/CD**: Catch issues before they reach production
+- **Maintain your tests**: Treat test code with the same care as production code
+- **Use coverage as a guide**: Not a goal, but a tool to find gaps
+
+Remember, the goal of testing is not to achieve 100% coverage, but to build confidence in your software and catch issues
+early. Start with the most critical paths, gradually expand coverage, and continuously refine your testing approach
+based on the types of bugs you encounter.
+
+## Further Reading
+
+### Related Chapters
+
+- [Branch-Based Testing](/branch-based-testing) - Learn about testing in ephemeral environments
+
+### Testing Fundamentals
+
+- [Static vs Unit vs Integration vs E2E Testing for Frontend Apps](https://kentcdodds.com/blog/static-vs-unit-vs-integration-vs-e2e-tests)
+  by Kent C. Dodds - Comprehensive guide to test types and when to use each
+- [The Testing Trophy and Testing Classifications](https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications)
+  by Kent C. Dodds - An alternative perspective to the testing pyramid
+- [Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) by Martin Fowler - Classic guide to
+  testing strategy
+
+### Testing Best Practices
+
+- [Common Testing Mistakes](https://kentcdodds.com/blog/common-testing-mistakes) by Kent C. Dodds - Avoid these common
+  pitfalls
+- [Testing Implementation Details](https://kentcdodds.com/blog/testing-implementation-details) by Kent C. Dodds - Why
+  you should test behavior, not implementation
+- [AHA Testing 💡](https://kentcdodds.com/blog/aha-testing) by Kent C. Dodds - Avoid Hasty Abstractions in your tests
+- [Avoid Nesting when you're Testing](https://kentcdodds.com/blog/avoid-nesting-when-youre-testing) by Kent C. Dodds -
+  Keep tests simple and readable
+- [Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices) - Comprehensive JavaScript
+  testing guide
+
+### Framework-Specific
+
+- [Common mistakes with React Testing Library](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
+  by Kent C. Dodds - React-specific testing advice
+- [Effective Snapshot Testing](https://kentcdodds.com/blog/effective-snapshot-testing) by Kent C. Dodds - When and how
+  to use snapshot tests
+
+### Continuous Integration
+
+- [Continuous Integration/Continuous Delivery](https://martinfowler.com/articles/continuousIntegration.html) by Martin
+  Fowler - CI/CD fundamentals

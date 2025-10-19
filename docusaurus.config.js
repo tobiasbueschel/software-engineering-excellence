@@ -12,7 +12,11 @@ module.exports = {
   organizationName: 'software-engineering-excellence',
   projectName: 'handbook',
   staticDirectories: ['static', 'docs/images'],
+  markdown: {
+    mermaid: true,
+  },
   themes: [
+    '@docusaurus/theme-mermaid',
     [
       require.resolve('@easyops-cn/docusaurus-search-local'),
       /** @type {import("@easyops-cn/docusaurus-search-local").PluginOptions} */

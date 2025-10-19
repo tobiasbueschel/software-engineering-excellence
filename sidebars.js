@@ -13,6 +13,7 @@ module.exports = {
     'pair-programming',
     'refactoring-techniques',
     'technical-debt',
+    'testing',
     // 'ci-cd',
     // 'automated-testing',
     // 'refactoring',
