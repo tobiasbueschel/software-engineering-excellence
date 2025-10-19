@@ -9,6 +9,7 @@ openapi
 Bachmann
 Garlan
 Ivers
+Parastatidis
 Paulo
 Merson
 Nord
@@ -36,12 +37,15 @@ Girish
 Suryanarayana
 Ganesh
 Samarthyam
+Savas
 Tushar
 Sharma
 Halladay
 Folwer
 Beedle
 Cohn
+Idempotency
+idempotency
 Ipek
 Kanban
 Kessler
@@ -73,6 +77,7 @@ Dodds
 dropdb
 DTAP
 façade
+fieldsets
 hotfixes
 jakejarvis
 Jamstack
@@ -97,5 +102,15 @@ testid
 trunkbaseddevelopment
 unrepresentable
 WCAG
+Webber
 Weimer
 wrongpassword
+yourapi
+appuser
+CCPA
+delaycompress
+loggroup
+notifempty
+pino
+SIEM
+uuidv
