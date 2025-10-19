@@ -1,10 +1,11 @@
 const githubRepoUrl = 'https://github.com/software-engineering-excellence/handbook';
 const title = 'Software Engineering Excellence';
+const siteUrl = 'https://software-engineering-excellence.vercel.app';
 
 module.exports = {
   title,
   tagline: 'Proven practices for developing software effectively',
-  url: 'https://software-engineering-excellence.vercel.app',
+  url: siteUrl,
   baseUrl: '/',
   onBrokenLinks: 'throw',
   favicon: 'img/favicon.ico',
@@ -39,9 +40,71 @@ module.exports = {
       },
     ],
   ],
+  headTags: [
+    // Structured data for better SEO and rich snippets
+    {
+      tagName: 'script',
+      attributes: {
+        type: 'application/ld+json',
+      },
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        headline: 'Software Engineering Excellence Handbook',
+        description:
+          'A comprehensive guide covering proven practices, principles, and techniques for developing high-quality, secure, reliable, and maintainable software.',
+        author: {
+          '@type': 'Person',
+          name: 'Tobias Büschel',
+          url: 'https://twitter.com/tobiasbueschel',
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: 'Software Engineering Excellence',
+          logo: {
+            '@type': 'ImageObject',
+            url: `${siteUrl}/img/logo.png`,
+          },
+        },
+        datePublished: '2024-01-01',
+        dateModified: new Date().toISOString().split('T')[0],
+        image: `${siteUrl}/img/software_engineering_excellence.png`,
+        url: siteUrl,
+        keywords:
+          'software engineering, best practices, software development, clean code, testing, CI/CD, architecture, design patterns, code review, agile, microservices, performance optimization, security, refactoring',
+      }),
+    },
+    // Breadcrumb structured data
+    {
+      tagName: 'script',
+      attributes: {
+        type: 'application/ld+json',
+      },
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: siteUrl,
+          },
+        ],
+      }),
+    },
+  ],
   themeConfig: {
     image: 'img/software_engineering_excellence.png',
     metadata: [
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1.0, maximum-scale=5.0',
+      },
+      {
+        name: 'theme-color',
+        content: '#ffffff',
+      },
       {
         name: 'keywords',
         content:
@@ -66,11 +129,15 @@ module.exports = {
       },
       {
         property: 'og:image',
-        content: 'https://software-engineering-excellence.vercel.app/img/software_engineering_excellence.png',
+        content: `${siteUrl}/img/software_engineering_excellence.png`,
       },
       {
         property: 'og:url',
-        content: 'https://software-engineering-excellence.vercel.app',
+        content: siteUrl,
+      },
+      {
+        property: 'og:site_name',
+        content: 'Software Engineering Excellence',
       },
       {
         name: 'twitter:card',
@@ -87,10 +154,14 @@ module.exports = {
       },
       {
         name: 'twitter:image',
-        content: 'https://software-engineering-excellence.vercel.app/img/software_engineering_excellence.png',
+        content: `${siteUrl}/img/software_engineering_excellence.png`,
       },
       {
         name: 'twitter:creator',
+        content: '@tobiasbueschel',
+      },
+      {
+        name: 'twitter:site',
         content: '@tobiasbueschel',
       },
       {
@@ -168,6 +239,13 @@ module.exports = {
           breadcrumbs: false,
           editUrl: `${githubRepoUrl}/edit/main/website/`,
           sidebarPath: require.resolve('./sidebars.js'),
+        },
+        sitemap: {
+          lastmod: 'date',
+          changefreq: 'weekly',
+          priority: 0.5,
+          ignorePatterns: ['/tags/**'],
+          filename: 'sitemap.xml',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
