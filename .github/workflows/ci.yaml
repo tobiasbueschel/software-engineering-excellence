@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           # Ensure that we fetch entire Git history to correctly show last updated author and time
           # https://github.com/facebook/docusaurus/issues/2798#issuecomment-636602951
