@@ -63,12 +63,16 @@ Zimmermann
 Zimmermann's
 Büschel
 Applitools
+brownbags
+Brownbags
+Buse
 codecov
 createdb
 debuggable
 Dodds
 dropdb
 DTAP
+façade
 hotfixes
 jakejarvis
 Jamstack
@@ -79,6 +83,7 @@ networkidle
 nextjs
 nosniff
 Nuxt
+Ousterhout
 OWASP
 preemptible
 runbooks
@@ -90,5 +95,7 @@ signup
 Snyk
 testid
 trunkbaseddevelopment
+unrepresentable
 WCAG
+Weimer
 wrongpassword
