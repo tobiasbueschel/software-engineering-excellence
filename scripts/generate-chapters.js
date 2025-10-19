@@ -20,16 +20,20 @@ files.forEach((file) => {
     !frontMatter.id ||
     frontMatter.id === 'introduction' ||
     frontMatter.id === 'contributors' ||
-    !frontMatter.imageUrl ||
+    !frontMatter.image ||
     !frontMatter.description
   ) {
     return;
   }
 
+  // Extract relative path from absolute URL for local use
+  // e.g., "https://software-engineering-excellence.vercel.app/img/undraw_agile.svg" -> "/img/undraw_agile.svg"
+  const imageUrl = frontMatter.image.replace(/^https?:\/\/[^/]+/, '');
+
   chapters.push({
     id: frontMatter.id,
     title: frontMatter.title,
-    imageUrl: frontMatter.imageUrl,
+    imageUrl: imageUrl,
     path: frontMatter.slug || `/${frontMatter.id}`,
     description: frontMatter.description,
   });

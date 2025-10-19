@@ -153,10 +153,13 @@ module.exports = {
     [
       '@docusaurus/preset-classic',
       {
-        gtag: {
-          trackingID: 'G-JPJLFTD0Z4',
-          anonymizeIP: true,
-        },
+        gtag:
+          process.env.NODE_ENV === 'production'
+            ? {
+                trackingID: 'G-JPJLFTD0Z4',
+                anonymizeIP: true,
+              }
+            : undefined,
         docs: {
           routeBasePath: '/',
           path: './docs',
