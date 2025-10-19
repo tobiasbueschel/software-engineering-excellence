@@ -6,6 +6,7 @@ title: Contributors
 The Software Engineering Excellence Handbook would not be possible without the editors and contributions of the
 following people.
 
+- [Tobias Büschel](https://github.com/tobiasbueschel)
 - [Dave Kerr](https://github.com/dwmkerr)
 
 **Thanks also goes to:**
