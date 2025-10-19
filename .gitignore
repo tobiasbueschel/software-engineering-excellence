@@ -8,6 +8,7 @@
 .docusaurus
 .cache-loader
 src/data/chapters.json
+static/img/social/*.png
 
 # Misc
 .DS_Store

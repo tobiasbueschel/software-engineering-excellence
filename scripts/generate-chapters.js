@@ -26,9 +26,15 @@ files.forEach((file) => {
     return;
   }
 
-  // Extract relative path from absolute URL for local use
-  // e.g., "https://software-engineering-excellence.vercel.app/img/undraw_agile.svg" -> "/img/undraw_agile.svg"
-  const imageUrl = frontMatter.image.replace(/^https?:\/\/[^/]+/, '');
+  // Extract relative path from absolute URL
+  // e.g., "https://software-engineering-excellence.vercel.app/img/social/undraw_agile.png" -> "/img/social/undraw_agile.png"
+  let imageUrl = frontMatter.image.replace(/^https?:\/\/[^/]+/, '');
+
+  // Convert PNG social image path back to SVG for frontend use
+  // e.g., "/img/social/undraw_agile.png" -> "/img/undraw_agile.svg"
+  if (imageUrl.includes('/img/social/')) {
+    imageUrl = imageUrl.replace('/img/social/', '/img/').replace('.png', '.svg');
+  }
 
   chapters.push({
     id: frontMatter.id,
