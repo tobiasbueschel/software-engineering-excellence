@@ -1,0 +1,1193 @@
+---
+id: development-environment-setup
+title: Development Environment Setup
+sidebar_label: Development Environment Setup
+---
+
+A well-configured development environment improves productivity, reduces friction, and ensures consistency across teams.
+This chapter covers essential tools, configurations, and best practices for setting up efficient development
+environments across different platforms and ecosystems.
+
+## Core Development Tools
+
+### Version Control Systems
+
+**Git** is the industry-standard distributed version control system.
+
+```bash
+# Install Git
+# macOS (via Homebrew)
+brew install git
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install git
+
+# Windows (via Chocolatey)
+choco install git
+
+# Configure Git
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Set default branch name
+git config --global init.defaultBranch main
+
+# Configure line endings
+# Windows
+git config --global core.autocrlf true
+
+# macOS/Linux
+git config --global core.autocrlf input
+
+# Enable color output
+git config --global color.ui auto
+
+# Set default editor
+git config --global core.editor "code --wait"  # VS Code
+# or
+git config --global core.editor "vim"
+
+# Configure useful aliases
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.ci commit
+git config --global alias.st status
+git config --global alias.unstage 'reset HEAD --'
+git config --global alias.last 'log -1 HEAD'
+git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
+
+# GPG signing for commits
+git config --global commit.gpgsign true
+git config --global user.signingkey YOUR_GPG_KEY_ID
+```
+
+**.gitconfig best practices**:
+
+```ini
+[user]
+  name = Your Name
+  email = your.email@example.com
+  signingkey = YOUR_GPG_KEY_ID
+
+[init]
+  defaultBranch = main
+
+[core]
+  editor = code --wait
+  autocrlf = input
+  excludesfile = ~/.gitignore_global
+
+[commit]
+  gpgsign = true
+  template = ~/.gitmessage
+
+[pull]
+  rebase = true
+
+[fetch]
+  prune = true
+
+[diff]
+  colorMoved = zebra
+
+[merge]
+  conflictstyle = diff3
+
+[alias]
+  lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+  st = status
+  co = checkout
+  br = branch
+  ci = commit
+  unstage = reset HEAD --
+
+[url "git@github.com:"]
+  insteadOf = https://github.com/
+```
+
+**Global .gitignore**:
+
+```bash
+# ~/.gitignore_global
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Build artifacts
+*.log
+*.tmp
+.cache/
+
+# Environment files
+.env.local
+.env.*.local
+```
+
+### Code Editors and IDEs
+
+#### Visual Studio Code
+
+```bash
+# Install VS Code
+# macOS
+brew install --cask visual-studio-code
+
+# Linux
+sudo snap install code --classic
+
+# Windows
+choco install vscode
+
+# Install essential extensions via CLI
+code --install-extension dbaeumer.vscode-eslint
+code --install-extension esbenp.prettier-vscode
+code --install-extension eamodio.gitlens
+code --install-extension ms-python.python
+code --install-extension ms-vscode.vscode-typescript-next
+code --install-extension streetsidesoftware.code-spell-checker
+code --install-extension ms-azuretools.vscode-docker
+code --install-extension ms-kubernetes-tools.vscode-kubernetes-tools
+code --install-extension GitHub.copilot
+```
+
+**VS Code settings.json**:
+
+```json
+{
+  "editor.fontSize": 14,
+  "editor.fontFamily": "'Fira Code', Consolas, 'Courier New', monospace",
+  "editor.fontLigatures": true,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "editor.rulers": [80, 120],
+  "editor.minimap.enabled": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  "editor.suggest.preview": true,
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+
+  "files.autoSave": "onFocusChange",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+
+  "workbench.colorTheme": "One Dark Pro",
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.startupEditor": "none",
+
+  "terminal.integrated.fontSize": 13,
+  "terminal.integrated.fontFamily": "'Fira Code', monospace",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "es5",
+  "prettier.printWidth": 120,
+
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.python"
+  }
+}
+```
+
+**Workspace-specific settings** (`.vscode/settings.json`):
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.workingDirectories": [{ "directory": "./", "changeProcessCWD": true }],
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.next": true
+  }
+}
+```
+
+**Recommended extensions list** (`.vscode/extensions.json`):
+
+```json
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "eamodio.gitlens",
+    "streetsidesoftware.code-spell-checker",
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
+    "GitHub.copilot",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense",
+    "formulahendry.auto-rename-tag"
+  ]
+}
+```
+
+### Shell Configuration
+
+#### Zsh (macOS/Linux)
+
+```bash
+# Install Oh My Zsh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+# Install Powerlevel10k theme
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+
+# Install useful plugins
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+```
+
+**~/.zshrc configuration**:
+
+```bash
+# Path to oh-my-zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+
+# Theme
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Plugins
+plugins=(
+  git
+  docker
+  docker-compose
+  kubectl
+  npm
+  node
+  python
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
+
+source $ZSH/oh-my-zsh.sh
+
+# User configuration
+export EDITOR='code'
+export LANG=en_US.UTF-8
+
+# Aliases
+alias ll='ls -lah'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias gs='git status'
+alias gp='git pull'
+alias gf='git fetch'
+alias gc='git commit'
+alias gco='git checkout'
+alias code='code .'
+
+# Development shortcuts
+alias dcu='docker-compose up -d'
+alias dcd='docker-compose down'
+alias dcl='docker-compose logs -f'
+
+# Node.js
+export PATH="$HOME/.nvm/versions/node/$(nvm current)/bin:$PATH"
+
+# Python
+export PATH="$HOME/.local/bin:$PATH"
+
+# Go
+export GOPATH="$HOME/go"
+export PATH="$PATH:$GOPATH/bin"
+
+# Custom functions
+mkcd() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Git branch in prompt (if not using powerlevel10k)
+parse_git_branch() {
+  git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+}
+
+# Load NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+```
+
+## Language-Specific Environments
+
+### JavaScript/Node.js
+
+```bash
+# Install Node Version Manager (NVM)
+# macOS/Linux
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Windows - use nvm-windows
+# Download from https://github.com/coreybutler/nvm-windows/releases
+
+# Install Node.js LTS
+nvm install --lts
+nvm use --lts
+nvm alias default node
+
+# Verify installation
+node --version
+npm --version
+
+# Configure npm
+npm config set init-author-name "Your Name"
+npm config set init-author-email "your.email@example.com"
+npm config set init-license "MIT"
+
+# Install global tools
+npm install -g npm@latest
+npm install -g yarn
+npm install -g pnpm
+npm install -g typescript
+npm install -g ts-node
+npm install -g nodemon
+npm install -g pm2
+npm install -g eslint
+npm install -g prettier
+npm install -g npm-check-updates
+```
+
+**Project setup template**:
+
+```bash
+# Initialize new project
+mkdir my-project && cd my-project
+npm init -y
+
+# Install dependencies
+npm install express dotenv
+
+# Install dev dependencies
+npm install --save-dev \
+  typescript @types/node @types/express \
+  eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin \
+  prettier eslint-config-prettier eslint-plugin-prettier \
+  jest @types/jest ts-jest \
+  nodemon ts-node
+
+# Initialize TypeScript
+npx tsc --init
+```
+
+**package.json scripts**:
+
+```json
+{
+  "scripts": {
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit"
+  }
+}
+```
+
+### Python
+
+```bash
+# Install pyenv (Python version manager)
+# macOS
+brew install pyenv
+
+# Linux
+curl https://pyenv.run | bash
+
+# Windows - use pyenv-win
+# https://github.com/pyenv-win/pyenv-win
+
+# Install Python versions
+pyenv install 3.11.0
+pyenv global 3.11.0
+
+# Verify installation
+python --version
+pip --version
+
+# Upgrade pip
+python -m pip install --upgrade pip
+
+# Install virtualenv
+pip install virtualenv
+
+# Install Poetry (modern dependency management)
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Install global tools
+pip install black flake8 mypy pylint pytest ipython
+```
+
+**Project setup**:
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# macOS/Linux
+source venv/bin/activate
+
+# Windows
+venv\Scripts\activate
+
+# Install project dependencies
+pip install -r requirements.txt
+
+# Or use Poetry
+poetry init
+poetry install
+```
+
+**requirements.txt structure**:
+
+```txt
+# requirements.txt - Production dependencies
+Django==4.2.0
+psycopg2-binary==2.9.6
+celery==5.3.0
+redis==4.5.5
+
+# requirements-dev.txt - Development dependencies
+-r requirements.txt  # Include production deps
+pytest==7.3.1
+black==23.3.0
+flake8==6.0.0
+mypy==1.3.0
+pylint==2.17.4
+pytest-cov==4.1.0
+```
+
+**pyproject.toml (Poetry)**:
+
+```toml
+[tool.poetry]
+name = "my-project"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <your.email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+django = "^4.2"
+psycopg2-binary = "^2.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3"
+black = "^23.3"
+flake8 = "^6.0"
+mypy = "^1.3"
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+```
+
+### Go
+
+```bash
+# Install Go
+# macOS
+brew install go
+
+# Linux
+wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+
+# Windows
+choco install golang
+
+# Configure environment
+export GOPATH="$HOME/go"
+export PATH="$PATH:/usr/local/go/bin:$GOPATH/bin"
+
+# Verify installation
+go version
+
+# Install tools
+go install golang.org/x/tools/gopls@latest
+go install github.com/go-delve/delve/cmd/dlv@latest
+go install honnef.co/go/tools/cmd/staticcheck@latest
+go install golang.org/x/tools/cmd/goimports@latest
+```
+
+**Project structure**:
+
+```
+my-project/
+├── cmd/
+│   └── server/
+│       └── main.go
+├── internal/
+│   ├── handlers/
+│   ├── models/
+│   └── services/
+├── pkg/
+│   └── utils/
+├── go.mod
+├── go.sum
+└── README.md
+```
+
+### Java
+
+```bash
+# Install SDKMAN (Java version manager)
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+# Install Java
+sdk install java 17.0.7-tem
+sdk use java 17.0.7-tem
+
+# Install Maven
+sdk install maven
+
+# Install Gradle
+sdk install gradle
+
+# Verify installation
+java -version
+mvn -version
+gradle -version
+```
+
+## Docker Development Environment
+
+```bash
+# Install Docker
+# macOS
+brew install --cask docker
+
+# Linux
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Windows
+choco install docker-desktop
+
+# Install Docker Compose (if not included)
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Verify installation
+docker --version
+docker-compose --version
+```
+
+**Development docker-compose.yml**:
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://user:password@database:5432/myapp
+      - REDIS_URL=redis://cache:6379
+    depends_on:
+      - database
+      - cache
+    command: npm run dev
+
+  database:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=myapp
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  cache:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+
+  adminer:
+    image: adminer
+    ports:
+      - '8080:8080'
+    depends_on:
+      - database
+
+volumes:
+  postgres-data:
+  redis-data:
+```
+
+**Dockerfile.dev**:
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Start development server
+CMD ["npm", "run", "dev"]
+```
+
+## Database Tools
+
+```bash
+# PostgreSQL client
+# macOS
+brew install postgresql
+
+# Linux
+sudo apt-get install postgresql-client
+
+# Database GUI tools
+# macOS
+brew install --cask dbeaver-community
+brew install --cask tableplus
+
+# Redis CLI
+brew install redis
+
+# MongoDB
+brew tap mongodb/brew
+brew install mongodb-community@7.0
+```
+
+## API Development Tools
+
+```bash
+# Install Postman
+# macOS
+brew install --cask postman
+
+# Install Insomnia (alternative)
+brew install --cask insomnia
+
+# cURL alternatives
+brew install httpie  # Modern HTTP client
+brew install jq      # JSON processor
+
+# Example usage
+http GET https://api.example.com/users | jq '.data[]'
+```
+
+## Debugging and Profiling Tools
+
+### Chrome DevTools
+
+Enable advanced debugging features:
+
+```javascript
+// Enable source maps in webpack.config.js
+module.exports = {
+  devtool: 'source-map',
+  // ... other config
+};
+
+// In package.json
+{
+  "scripts": {
+    "dev": "NODE_OPTIONS='--inspect' npm run start"
+  }
+}
+```
+
+### Node.js Debugging
+
+```bash
+# Debug with Chrome DevTools
+node --inspect-brk app.js
+
+# Debug with VS Code
+# Add to .vscode/launch.json
+```
+
+**.vscode/launch.json**:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Program",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/src/index.ts",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest Tests",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand", "--no-cache"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}
+```
+
+## Environment Variable Management
+
+### Using dotenv
+
+```bash
+npm install dotenv
+```
+
+**.env**:
+
+```bash
+# Database
+DATABASE_URL=postgresql://localhost:5432/myapp
+DATABASE_POOL_SIZE=10
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# API Keys
+API_KEY=your_api_key_here
+STRIPE_SECRET_KEY=sk_test_xxxxx
+
+# Application
+NODE_ENV=development
+PORT=3000
+LOG_LEVEL=debug
+
+# Feature Flags
+FEATURE_NEW_UI=true
+FEATURE_BETA=false
+```
+
+**.env.example** (commit this):
+
+```bash
+# Database
+DATABASE_URL=postgresql://localhost:5432/myapp
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# API Keys
+API_KEY=
+STRIPE_SECRET_KEY=
+
+# Application
+NODE_ENV=development
+PORT=3000
+```
+
+**Loading environment variables**:
+
+```javascript
+// src/config/index.ts
+import dotenv from 'dotenv';
+import { z } from 'zod';
+
+// Load .env file
+dotenv.config();
+
+// Validate environment variables
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']),
+  PORT: z.string().transform(Number),
+  DATABASE_URL: z.string().url(),
+  REDIS_URL: z.string().url(),
+  API_KEY: z.string().min(1),
+});
+
+// Parse and validate
+const env = envSchema.parse(process.env);
+
+export default env;
+```
+
+## Continuous Integration Setup
+
+### GitHub Actions
+
+**.github/workflows/ci.yml**:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run type check
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test:coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+```
+
+## Documentation Tools
+
+```bash
+# Install documentation generators
+npm install -g jsdoc
+npm install -g typedoc
+pip install sphinx mkdocs
+
+# API documentation
+npm install -g @stoplight/prism-cli
+npm install -g swagger-cli
+```
+
+## Performance Monitoring Tools
+
+```bash
+# Install performance monitoring tools
+npm install -g clinic
+npm install -g autocannon  # Load testing
+npm install -g lighthouse  # Web performance
+
+# Profile Node.js applications
+clinic doctor -- node app.js
+clinic bubbleprof -- node app.js
+
+# Load testing
+autocannon -c 100 -d 30 http://localhost:3000
+```
+
+## Best Practices
+
+### Development Workflow Checklist
+
+```markdown
+## New Project Setup
+
+- [ ] Initialize Git repository
+- [ ] Create .gitignore
+- [ ] Set up package manager (npm/yarn/pnpm)
+- [ ] Configure linter (ESLint/Flake8)
+- [ ] Configure formatter (Prettier/Black)
+- [ ] Set up TypeScript (if applicable)
+- [ ] Configure test framework (Jest/Pytest)
+- [ ] Create README.md
+- [ ] Add LICENSE file
+- [ ] Set up CI/CD pipeline
+- [ ] Configure pre-commit hooks
+- [ ] Create .env.example
+- [ ] Document setup instructions
+
+## Editor Configuration
+
+- [ ] Install required extensions
+- [ ] Configure formatting on save
+- [ ] Enable auto-import organization
+- [ ] Set up debugging configuration
+- [ ] Configure integrated terminal
+- [ ] Enable Git integration
+
+## Environment
+
+- [ ] Install language runtime
+- [ ] Configure version manager
+- [ ] Set up virtual environment
+- [ ] Install development dependencies
+- [ ] Configure database
+- [ ] Set up Docker containers
+- [ ] Install debugging tools
+```
+
+### Dotfiles Management
+
+Keep configurations in version control:
+
+```bash
+# Create dotfiles repository
+mkdir ~/dotfiles
+cd ~/dotfiles
+
+# Move configurations
+mv ~/.zshrc ./zshrc
+mv ~/.gitconfig ./gitconfig
+mv ~/.vimrc ./vimrc
+
+# Create symlinks
+ln -s ~/dotfiles/zshrc ~/.zshrc
+ln -s ~/dotfiles/gitconfig ~/.gitconfig
+ln -s ~/dotfiles/vimrc ~/.vimrc
+
+# Initialize Git
+git init
+git add .
+git commit -m "Initial dotfiles"
+git remote add origin git@github.com:username/dotfiles.git
+git push -u origin main
+```
+
+### Pre-commit Hooks
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Create .pre-commit-config.yaml
+```
+
+**.pre-commit-config.yaml**:
+
+```yaml
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.43.0
+    hooks:
+      - id: eslint
+        files: \.(js|ts|jsx|tsx)$
+        types: [file]
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.0
+    hooks:
+      - id: prettier
+        files: \.(js|ts|jsx|tsx|json|md)$
+```
+
+```bash
+# Install hooks
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+## Platform-Specific Tips
+
+### macOS
+
+```bash
+# Install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Rosetta (Apple Silicon)
+softwareupdate --install-rosetta
+
+# Essential tools
+brew install git node python go docker
+brew install --cask visual-studio-code iterm2 postman
+
+# Command Line Tools
+xcode-select --install
+```
+
+### Linux (Ubuntu/Debian)
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install build essentials
+sudo apt install -y build-essential curl wget git
+
+# Install Node.js
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install Python
+sudo apt install -y python3 python3-pip python3-venv
+
+# Install Docker
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+```
+
+### Windows
+
+```powershell
+# Install Chocolatey
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Install tools
+choco install git nodejs python docker-desktop vscode -y
+
+# Install WSL2 (Windows Subsystem for Linux)
+wsl --install
+```
+
+## Conclusion
+
+A well-configured development environment is foundational to productivity. Key takeaways:
+
+1. **Standardize across the team**: Use shared configurations and documentation
+2. **Automate setup**: Create scripts to bootstrap new environments
+3. **Keep tools updated**: Regularly update dependencies and tools
+4. **Document everything**: Maintain clear setup instructions
+5. **Use version managers**: Enable easy switching between versions
+6. **Leverage Docker**: Ensure consistency across environments
+7. **Configure your editor**: Maximize productivity with proper setup
+8. **Implement quality gates**: Linting, formatting, pre-commit hooks
+
+Start with the basics and progressively enhance your environment. Invest time in setup—it pays dividends in productivity
+and reduces friction in daily development work.
+
+## Related Chapters
+
+- [Version Control Systems](/version-control-systems) - Git workflows and best practices
+- [CI/CD](/ci-cd) - Automating builds and deployments
+- [Containerization](/containerization) - Docker development environments
+- [Dependency Management](/dependency-management) - Managing project dependencies
+- [Code Quality Metrics](/code-quality-metrics) - Integrating quality tools
+- [Testing](/testing) - Setting up test frameworks
+
+## References
+
+- **Visual Studio Code**: [https://code.visualstudio.com/docs](https://code.visualstudio.com/docs)
+- **Oh My Zsh**: [https://ohmyz.sh/](https://ohmyz.sh/)
+- **NVM**: [https://github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
+- **pyenv**: [https://github.com/pyenv/pyenv](https://github.com/pyenv/pyenv)
+- **Docker Documentation**: [https://docs.docker.com/](https://docs.docker.com/)
+- **The Missing Semester of Your CS Education**: [https://missing.csail.mit.edu/](https://missing.csail.mit.edu/)
+- **Dev.to - Development Environment**: [https://dev.to/t/environment](https://dev.to/t/environment)

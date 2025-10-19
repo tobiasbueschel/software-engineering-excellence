@@ -20,13 +20,14 @@ const CONTENT_CHAPTERS = [
   'testing',
   'version-control-systems',
   'ci-cd',
-  // 'code-quality-metrics',
-  // 'microservices',
-  // 'containerization',
-  // 'dependency-management',
-  // 'security-best-practices',
-  // 'monitoring-and-observability',
-  // 'development-environment-setup',
+  'code-quality-metrics',
+  'containerization',
+  'dependency-management',
+  'development-environment-setup',
+  'microservices',
+  'monitoring-and-observability',
+  'security-best-practices',
+  'scalability-and-reliability',
 ];
 
 module.exports = {
