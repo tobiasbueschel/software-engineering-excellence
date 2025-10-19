@@ -135,11 +135,11 @@ async function generateSocialImage(svgFileName) {
     const title = escapeXml(metadata.title);
     const description = escapeXml(metadata.description);
 
-    // Typography settings
-    const titleFontSize = 56;
-    const descriptionFontSize = 24;
+    // Typography settings - Much larger for social media readability
+    const titleFontSize = 72;
+    const descriptionFontSize = 28;
     const titleLineHeight = titleFontSize * 1.15;
-    const descriptionLineHeight = descriptionFontSize * 1.6;
+    const descriptionLineHeight = descriptionFontSize * 1.5;
 
     // Wrap title text (max chars per line based on font size and available width)
     const titleMaxChars = Math.floor((textMaxWidth - padding * 2) / (titleFontSize * 0.55));
@@ -152,10 +152,6 @@ async function generateSocialImage(svgFileName) {
       truncatedTitle[maxTitleLines - 1] = lastLine.substring(0, lastLine.length - 3) + '...';
     }
 
-    // Calculate starting Y position for title (vertically centered with content)
-    const titleStartY = 180;
-    const titleBlockHeight = truncatedTitle.length * titleLineHeight;
-
     // Wrap description text
     const descriptionMaxChars = Math.floor((textMaxWidth - padding * 2) / (descriptionFontSize * 0.55));
     const descriptionLines = wrapText(description, descriptionMaxChars);
@@ -166,7 +162,15 @@ async function generateSocialImage(svgFileName) {
       truncatedDescription[maxDescriptionLines - 1] = lastLine.substring(0, lastLine.length - 3) + '...';
     }
 
-    const descriptionStartY = titleStartY + titleBlockHeight + 40;
+    // Calculate total content height for vertical centering
+    const titleBlockHeight = truncatedTitle.length * titleLineHeight;
+    const descriptionBlockHeight = truncatedDescription.length * descriptionLineHeight;
+    const gapBetweenTitleAndDescription = 50;
+    const totalContentHeight = titleBlockHeight + gapBetweenTitleAndDescription + descriptionBlockHeight;
+
+    // Center the entire text block vertically
+    const titleStartY = (HEIGHT - totalContentHeight) / 2 + titleLineHeight * 0.8; // Offset for text baseline
+    const descriptionStartY = titleStartY + titleBlockHeight + gapBetweenTitleAndDescription;
 
     // Generate text SVG elements with proper line wrapping
     const titleElements = truncatedTitle
@@ -175,7 +179,7 @@ async function generateSocialImage(svgFileName) {
       <text x="${padding}" y="${titleStartY + index * titleLineHeight}"
             font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
             font-size="${titleFontSize}"
-            font-weight="700"
+            font-weight="800"
             fill="${TEXT_PRIMARY}">
         ${line}
       </text>
@@ -189,7 +193,7 @@ async function generateSocialImage(svgFileName) {
       <text x="${padding}" y="${descriptionStartY + index * descriptionLineHeight}"
             font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
             font-size="${descriptionFontSize}"
-            font-weight="400"
+            font-weight="500"
             fill="${TEXT_SECONDARY}">
         ${line}
       </text>
