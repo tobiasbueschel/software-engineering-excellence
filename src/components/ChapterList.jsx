@@ -1,5 +1,6 @@
 import React from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
+import chaptersData from '@site/src/data/chapters.json';
 import styles from './ChapterList.module.css';
 
 function Chapter({ imageUrl, title, path, description }) {
@@ -25,13 +26,11 @@ function Chapter({ imageUrl, title, path, description }) {
   );
 }
 
-export default function ChapterList({ chapters }) {
-  const sortedChapters = chapters.sort((a, b) => a.title.localeCompare(b.title));
-
+export default function ChapterList() {
   return (
     <section className={styles.chapterSection}>
       <div className={styles.chapterGrid}>
-        {sortedChapters.map((props, index) => (
+        {chaptersData.map((props, index) => (
           <Chapter key={index} {...props} />
         ))}
       </div>

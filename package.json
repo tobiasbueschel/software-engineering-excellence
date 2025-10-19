@@ -5,7 +5,10 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
+    "generate:chapters": "node scripts/generate-chapters.js",
+    "prestart": "npm run generate:chapters",
     "start": "docusaurus start",
+    "prebuild": "npm run generate:chapters",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
@@ -34,6 +37,7 @@
     "@commitlint/cli": "^17.6.3",
     "@commitlint/config-conventional": "^17.6.7",
     "cspell": "^6.31.1",
+    "gray-matter": "^4.0.3",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.3",
     "prettier": "2.8.7"
