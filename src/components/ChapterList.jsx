@@ -27,11 +27,13 @@ function Chapter({ imageUrl, title, path, description }) {
 }
 
 export default function ChapterList({ chapters }) {
+  const sortedChapters = chapters.sort((a, b) => a.title.localeCompare(b.title));
+
   return (
     <section>
       <div className="container">
         <div className="row">
-          {chapters.map((props, index) => (
+          {sortedChapters.map((props, index) => (
             <Chapter key={index} {...props} />
           ))}
         </div>
