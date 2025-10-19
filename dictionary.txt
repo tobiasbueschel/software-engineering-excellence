@@ -89,6 +89,7 @@ nextjs
 nosniff
 Nuxt
 Ousterhout
+overcommit
 OWASP
 preemptible
 runbooks
@@ -357,6 +358,7 @@ serde
 sidekiq
 signingkey
 Signups
+Standups
 sigstore
 singlestat
 softwareupdate
