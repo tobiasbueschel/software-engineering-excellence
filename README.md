@@ -1,6 +1,6 @@
 <div align="center">
   <br>
-	<a href="https://software-engineering-excellence.com">
+	<a href="https://software-engineering-excellence.vercel.app">
     <img alt="Software Engineering Excellence - Handbook User Interface" src="ui.png" >
 	</a>
 	<h1>Software Engineering Excellence - Handbook</h1>
@@ -16,7 +16,7 @@ techniques for developing high-quality software. It covers various aspects of so
 requirements gathering, design, coding, testing, deployment, and maintenance. The handbook provides guidance on how to
 build software that is secure, reliable, scalable, maintainable, and efficient.
 
-Read it here: https://software-engineering-excellence.com
+Read it here: https://software-engineering-excellence.vercel.app
 
 ## Contributions
 

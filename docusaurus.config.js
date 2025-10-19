@@ -4,7 +4,7 @@ const title = 'Software Engineering Excellence';
 module.exports = {
   title,
   tagline: 'Proven practices for developing software effectively',
-  url: 'https://software-engineering-excellence.com',
+  url: 'https://software-engineering-excellence.vercel.app',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',

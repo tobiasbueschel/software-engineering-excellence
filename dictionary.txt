@@ -378,3 +378,17 @@ vimrc
 virtualenv
 WORKDIR
 yaxes
+пароль
+CODEOWNERS
+contextvars
+ecure
+genexpr
+isinstance
+isoformat
+kwargs
+mergetool
+pstats
+Traceback
+tracemalloc
+utcnow
+Unported
