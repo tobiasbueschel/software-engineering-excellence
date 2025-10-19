@@ -8,16 +8,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Ensure that we fetch entire Git history to correctly show last updated author and time
           # https://github.com/facebook/docusaurus/issues/2798#issuecomment-636602951
           fetch-depth: 0
 
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v3
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '20'
+          cache: 'npm'
 
       - run: npm ci
 
@@ -33,7 +34,7 @@ jobs:
     name: Validate PR title
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
+      - uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

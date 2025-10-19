@@ -7,13 +7,15 @@ module.exports = {
   url: 'https://software-engineering-excellence.vercel.app',
   baseUrl: '/',
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
   organizationName: 'software-engineering-excellence',
   projectName: 'handbook',
   staticDirectories: ['static', 'docs/images'],
   markdown: {
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
     mdx1Compat: {
       comments: true,
       admonitions: true,
@@ -43,11 +45,65 @@ module.exports = {
       {
         name: 'keywords',
         content:
-          'software engineering excellence, software engineering, best practices, software development, open-source',
+          'software engineering excellence, software engineering, best practices, software development, open-source, clean code, testing, CI/CD, architecture, design patterns, code review, agile, microservices, performance optimization, security, refactoring',
       },
       {
         name: 'description',
         content: 'Proven practices for developing software effectively',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        property: 'og:title',
+        content: 'Software Engineering Excellence - Handbook',
+      },
+      {
+        property: 'og:description',
+        content:
+          'A comprehensive guide covering proven practices, principles, and techniques for developing high-quality, secure, reliable, and maintainable software.',
+      },
+      {
+        property: 'og:image',
+        content: 'https://software-engineering-excellence.vercel.app/img/software_engineering_excellence.png',
+      },
+      {
+        property: 'og:url',
+        content: 'https://software-engineering-excellence.vercel.app',
+      },
+      {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+      {
+        name: 'twitter:title',
+        content: 'Software Engineering Excellence - Handbook',
+      },
+      {
+        name: 'twitter:description',
+        content:
+          'A comprehensive guide covering proven practices, principles, and techniques for developing high-quality software.',
+      },
+      {
+        name: 'twitter:image',
+        content: 'https://software-engineering-excellence.vercel.app/img/software_engineering_excellence.png',
+      },
+      {
+        name: 'twitter:creator',
+        content: '@tobiasbueschel',
+      },
+      {
+        name: 'author',
+        content: 'Tobias Büschel',
+      },
+      {
+        name: 'language',
+        content: 'English',
+      },
+      {
+        name: 'robots',
+        content: 'index, follow',
       },
     ],
     navbar: {
