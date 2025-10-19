@@ -1,6 +1,7 @@
 ---
 id: testing
 title: Software Testing
+sidebar_label: Software Testing
 description: >-
   Explore testing strategies from unit to E2E, TDD, BDD, and branch-based testing to build reliable, maintainable
   applications.
@@ -569,6 +570,624 @@ test('should expire after TTL', () => {
 
 - **testing**: Built-in testing package
 - **testify**: Testing toolkit with assertions
+
+## AI-Powered Test Generation
+
+AI coding assistants are revolutionizing test writing by automatically generating comprehensive test suites, identifying
+edge cases, and helping developers write better tests faster. While AI-generated tests still require human review, they
+can significantly accelerate test development and improve coverage.
+
+### Benefits of AI Test Generation
+
+- **Faster test creation**: Generate complete test suites in seconds
+- **Better edge case coverage**: AI identifies scenarios you might miss
+- **Consistent test patterns**: Maintains uniform test structure
+- **Learning tool**: See how to test unfamiliar code patterns
+- **Reduced testing burden**: Lower barrier to achieving high coverage
+- **Boilerplate elimination**: Focus on test logic, not setup code
+
+### Using AI to Generate Tests
+
+#### Pattern 1: Generate Tests from Implementation
+
+```javascript
+// Your implementation
+function calculateShippingCost(weight, distance, express) {
+  if (weight <= 0 || distance <= 0) {
+    throw new Error('Weight and distance must be positive');
+  }
+
+  const baseRate = 5.0;
+  const weightRate = 0.5;
+  const distanceRate = 0.1;
+  const expressMultiplier = 2.0;
+
+  let cost = baseRate + weight * weightRate + distance * distanceRate;
+
+  if (express) {
+    cost *= expressMultiplier;
+  }
+
+  return Math.round(cost * 100) / 100;
+}
+
+// Prompt to AI:
+// "Generate comprehensive Jest tests for this function, including edge cases"
+
+// AI-generated tests:
+describe('calculateShippingCost', () => {
+  describe('valid inputs', () => {
+    it('should calculate standard shipping cost correctly', () => {
+      const cost = calculateShippingCost(10, 50, false);
+      expect(cost).toBe(15.0); // 5 + (10 * 0.5) + (50 * 0.1)
+    });
+
+    it('should calculate express shipping cost correctly', () => {
+      const cost = calculateShippingCost(10, 50, true);
+      expect(cost).toBe(30.0); // 15 * 2
+    });
+
+    it('should handle fractional weights and distances', () => {
+      const cost = calculateShippingCost(2.5, 10.5, false);
+      expect(cost).toBe(7.3); // 5 + (2.5 * 0.5) + (10.5 * 0.1)
+    });
+
+    it('should round to 2 decimal places', () => {
+      const cost = calculateShippingCost(1.11, 1.11, false);
+      expect(cost).toBe(5.67); // Ensures proper rounding
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle zero weight', () => {
+      expect(() => calculateShippingCost(0, 50, false)).toThrow('Weight and distance must be positive');
+    });
+
+    it('should handle negative weight', () => {
+      expect(() => calculateShippingCost(-5, 50, false)).toThrow('Weight and distance must be positive');
+    });
+
+    it('should handle zero distance', () => {
+      expect(() => calculateShippingCost(10, 0, false)).toThrow('Weight and distance must be positive');
+    });
+
+    it('should handle negative distance', () => {
+      expect(() => calculateShippingCost(10, -10, false)).toThrow('Weight and distance must be positive');
+    });
+
+    it('should handle very large values', () => {
+      const cost = calculateShippingCost(1000, 1000, false);
+      expect(cost).toBe(605.0);
+    });
+
+    it('should handle express flag as false explicitly', () => {
+      const cost = calculateShippingCost(10, 10, false);
+      expect(cost).toBe(11.0);
+    });
+  });
+
+  describe('type handling', () => {
+    it('should handle string numbers', () => {
+      // Note: JavaScript coercion - might want to add validation
+      const cost = calculateShippingCost('10', '50', false);
+      expect(cost).toBe(15.0);
+    });
+  });
+});
+```
+
+#### Pattern 2: Test-Driven Development with AI
+
+```typescript
+// Prompt: "I need to implement a user authentication service.
+//         Generate tests first for these requirements:
+//         - Register new users
+//         - Validate email format
+//         - Hash passwords
+//         - Prevent duplicate emails"
+
+// AI generates tests:
+describe('AuthService', () => {
+  let authService: AuthService;
+  let mockDb: jest.Mocked<Database>;
+
+  beforeEach(() => {
+    mockDb = {
+      users: {
+        create: jest.fn(),
+        findByEmail: jest.fn(),
+      },
+    } as any;
+    authService = new AuthService(mockDb);
+  });
+
+  describe('registerUser', () => {
+    it('should create a new user with valid data', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'SecurePass123!',
+        name: 'Test User',
+      };
+
+      mockDb.users.findByEmail.mockResolvedValue(null);
+      mockDb.users.create.mockResolvedValue({
+        id: '123',
+        ...userData,
+        password: 'hashed_password',
+      });
+
+      const user = await authService.registerUser(userData);
+
+      expect(user).toHaveProperty('id');
+      expect(user.email).toBe(userData.email);
+      expect(user.password).not.toBe(userData.password);
+    });
+
+    it('should reject invalid email format', async () => {
+      const userData = {
+        email: 'invalid-email',
+        password: 'SecurePass123!',
+        name: 'Test User',
+      };
+
+      await expect(authService.registerUser(userData)).rejects.toThrow('Invalid email format');
+    });
+
+    it('should reject duplicate email', async () => {
+      const userData = {
+        email: 'existing@example.com',
+        password: 'SecurePass123!',
+        name: 'Test User',
+      };
+
+      mockDb.users.findByEmail.mockResolvedValue({
+        id: '456',
+        email: userData.email,
+      } as any);
+
+      await expect(authService.registerUser(userData)).rejects.toThrow('Email already exists');
+    });
+
+    it('should hash password before storage', async () => {
+      const userData = {
+        email: 'test@example.com',
+        password: 'PlainTextPassword',
+        name: 'Test User',
+      };
+
+      mockDb.users.findByEmail.mockResolvedValue(null);
+      mockDb.users.create.mockResolvedValue({
+        id: '123',
+        ...userData,
+        password: 'hashed_password',
+      });
+
+      await authService.registerUser(userData);
+
+      const createCall = mockDb.users.create.mock.calls[0][0];
+      expect(createCall.password).not.toBe('PlainTextPassword');
+    });
+  });
+});
+
+// Now implement to make tests pass
+// (See TDD section in Prompt Engineering chapter)
+```
+
+#### Pattern 3: Generate Tests for Legacy Code
+
+```python
+# Prompt: "Generate pytest tests for this legacy code.
+#         I need to refactor it but want tests first for safety."
+
+# Legacy code (no tests):
+def process_order(order_data):
+    items = order_data['items']
+    total = 0
+    for item in items:
+        total += item['price'] * item['qty']
+
+    if order_data['coupon']:
+        if order_data['coupon'] == 'SAVE10':
+            total = total * 0.9
+        elif order_data['coupon'] == 'SAVE20':
+            total = total * 0.8
+
+    if total > 100:
+        shipping = 0
+    else:
+        shipping = 10
+
+    return {'total': total + shipping, 'shipping': shipping}
+
+# AI-generated tests:
+import pytest
+
+class TestProcessOrder:
+    def test_basic_order_calculation(self):
+        order = {
+            'items': [
+                {'price': 10, 'qty': 2},
+                {'price': 5, 'qty': 3}
+            ],
+            'coupon': None
+        }
+        result = process_order(order)
+        assert result['total'] == 45  # 35 + 10 shipping
+        assert result['shipping'] == 10
+
+    def test_order_with_save10_coupon(self):
+        order = {
+            'items': [{'price': 100, 'qty': 1}],
+            'coupon': 'SAVE10'
+        }
+        result = process_order(order)
+        assert result['total'] == 90  # 100 * 0.9, free shipping
+        assert result['shipping'] == 0
+
+    def test_order_with_save20_coupon(self):
+        order = {
+            'items': [{'price': 50, 'qty': 2}],
+            'coupon': 'SAVE20'
+        }
+        result = process_order(order)
+        assert result['total'] == 80  # 100 * 0.8, free shipping
+        assert result['shipping'] == 0
+
+    def test_free_shipping_threshold(self):
+        order = {
+            'items': [{'price': 101, 'qty': 1}],
+            'coupon': None
+        }
+        result = process_order(order)
+        assert result['total'] == 101
+        assert result['shipping'] == 0
+
+    def test_shipping_applies_below_threshold(self):
+        order = {
+            'items': [{'price': 99, 'qty': 1}],
+            'coupon': None
+        }
+        result = process_order(order)
+        assert result['total'] == 109
+        assert result['shipping'] == 10
+
+    def test_invalid_coupon_ignored(self):
+        order = {
+            'items': [{'price': 50, 'qty': 1}],
+            'coupon': 'INVALID'
+        }
+        result = process_order(order)
+        assert result['total'] == 60  # No discount applied
+
+    def test_empty_items_list(self):
+        order = {'items': [], 'coupon': None}
+        result = process_order(order)
+        assert result['total'] == 10  # Just shipping
+        assert result['shipping'] == 10
+
+    @pytest.mark.parametrize('order_data,expected_total', [
+        ({'items': [{'price': 10, 'qty': 1}], 'coupon': None}, 20),
+        ({'items': [{'price': 10, 'qty': 1}], 'coupon': 'SAVE10'}, 19),
+        ({'items': [{'price': 200, 'qty': 1}], 'coupon': None}, 200),
+    ])
+    def test_various_scenarios(self, order_data, expected_total):
+        result = process_order(order_data)
+        assert result['total'] == expected_total
+```
+
+### Best Practices for AI Test Generation
+
+#### 1. Review and Validate AI Tests
+
+AI-generated tests can have issues:
+
+```javascript
+// AI might generate:
+test('should handle user creation', async () => {
+  const user = await createUser({ name: 'Test' });
+  expect(user).toBeTruthy();
+});
+
+// Issues:
+// ❌ Too vague - what specifically should be tested?
+// ❌ No cleanup - test pollution
+// ❌ Missing important assertions
+// ❌ No edge cases
+
+// Improved version:
+describe('createUser', () => {
+  afterEach(async () => {
+    await cleanupTestUsers();
+  });
+
+  it('should create user with all required fields', async () => {
+    const userData = {
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'SecurePass123!',
+    };
+
+    const user = await createUser(userData);
+
+    expect(user).toMatchObject({
+      name: userData.name,
+      email: userData.email,
+    });
+    expect(user.id).toBeDefined();
+    expect(user.password).not.toBe(userData.password); // Should be hashed
+    expect(user.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('should reject missing required fields', async () => {
+    await expect(createUser({ name: 'Test' })).rejects.toThrow('Email is required');
+  });
+});
+```
+
+#### 2. Use AI to Identify Missing Test Cases
+
+```javascript
+// Prompt: "Review my tests and suggest missing edge cases"
+
+// Your tests:
+describe('divide', () => {
+  it('should divide two numbers', () => {
+    expect(divide(10, 2)).toBe(5);
+  });
+});
+
+// AI response:
+// Missing test cases:
+// 1. Division by zero
+// 2. Negative numbers
+// 3. Decimal results
+// 4. Very large numbers
+// 5. NaN/Infinity handling
+// 6. String inputs (if applicable)
+
+// Generate these tests:
+describe('divide', () => {
+  it('should divide two positive numbers', () => {
+    expect(divide(10, 2)).toBe(5);
+  });
+
+  it('should throw error when dividing by zero', () => {
+    expect(() => divide(10, 0)).toThrow('Division by zero');
+  });
+
+  it('should handle negative numbers', () => {
+    expect(divide(-10, 2)).toBe(-5);
+    expect(divide(10, -2)).toBe(-5);
+    expect(divide(-10, -2)).toBe(5);
+  });
+
+  it('should handle decimal results', () => {
+    expect(divide(5, 2)).toBe(2.5);
+  });
+
+  it('should handle very large numbers', () => {
+    expect(divide(Number.MAX_SAFE_INTEGER, 2)).toBe(Number.MAX_SAFE_INTEGER / 2);
+  });
+});
+```
+
+#### 3. Generate Integration Tests
+
+```typescript
+// Prompt: "Generate integration tests for this API endpoint"
+
+// Your API endpoint:
+app.post('/api/orders', authenticate, async (req, res) => {
+  const { items, shippingAddress } = req.body;
+  const order = await orderService.create({
+    userId: req.user.id,
+    items,
+    shippingAddress,
+  });
+  res.status(201).json(order);
+});
+
+// AI-generated integration tests:
+describe('POST /api/orders', () => {
+  let authToken: string;
+  let testUser: User;
+
+  beforeAll(async () => {
+    testUser = await createTestUser();
+    authToken = generateAuthToken(testUser.id);
+  });
+
+  afterAll(async () => {
+    await cleanupTestData();
+  });
+
+  it('should create order with valid data', async () => {
+    const orderData = {
+      items: [
+        { productId: '123', quantity: 2 },
+        { productId: '456', quantity: 1 },
+      ],
+      shippingAddress: {
+        street: '123 Main St',
+        city: 'New York',
+        zipCode: '10001',
+      },
+    };
+
+    const response = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send(orderData)
+      .expect(201);
+
+    expect(response.body).toHaveProperty('id');
+    expect(response.body.userId).toBe(testUser.id);
+    expect(response.body.items).toHaveLength(2);
+
+    // Verify in database
+    const order = await Order.findById(response.body.id);
+    expect(order).toBeTruthy();
+  });
+
+  it('should return 401 without authentication', async () => {
+    await request(app).post('/api/orders').send({}).expect(401);
+  });
+
+  it('should return 400 with invalid data', async () => {
+    const response = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ items: [] }) // Empty items
+      .expect(400);
+
+    expect(response.body).toHaveProperty('error');
+  });
+
+  it('should return 404 for non-existent products', async () => {
+    await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        items: [{ productId: 'non-existent', quantity: 1 }],
+        shippingAddress: { street: 'Test', city: 'Test', zipCode: '12345' },
+      })
+      .expect(404);
+  });
+});
+```
+
+#### 4. Generate Property-Based Tests
+
+```javascript
+// Prompt: "Generate property-based tests using fast-check for this sort function"
+
+import fc from 'fast-check';
+
+// AI generates:
+describe('customSort property-based tests', () => {
+  it('should maintain array length', () => {
+    fc.assert(
+      fc.property(fc.array(fc.integer()), (arr) => {
+        const sorted = customSort([...arr]);
+        expect(sorted.length).toBe(arr.length);
+      })
+    );
+  });
+
+  it('should contain same elements', () => {
+    fc.assert(
+      fc.property(fc.array(fc.integer()), (arr) => {
+        const sorted = customSort([...arr]);
+        const originalSorted = [...arr].sort((a, b) => a - b);
+        expect(sorted).toEqual(originalSorted);
+      })
+    );
+  });
+
+  it('should be idempotent', () => {
+    fc.assert(
+      fc.property(fc.array(fc.integer()), (arr) => {
+        const sorted1 = customSort([...arr]);
+        const sorted2 = customSort([...sorted1]);
+        expect(sorted1).toEqual(sorted2);
+      })
+    );
+  });
+
+  it('should produce sorted output', () => {
+    fc.assert(
+      fc.property(fc.array(fc.integer()), (arr) => {
+        const sorted = customSort([...arr]);
+        for (let i = 1; i < sorted.length; i++) {
+          expect(sorted[i]).toBeGreaterThanOrEqual(sorted[i - 1]);
+        }
+      })
+    );
+  });
+});
+```
+
+### AI Tools for Test Generation
+
+**GitHub Copilot**
+
+- Inline test suggestions as you type
+- Complete test suite generation from function signatures
+- Pattern recognition for similar tests
+
+**Cursor AI**
+
+- Generate tests for entire files
+- Explain existing tests
+- Suggest missing coverage
+
+**Tabnine**
+
+- Context-aware test completions
+- Team learning from existing test patterns
+
+**Specialized Tools**
+
+- **Codium AI**: Dedicated test generation
+- **DiffBlue Cover**: Java test generation
+- **Ponicode**: JavaScript/TypeScript test generation
+
+### Limitations and Gotchas
+
+:::warning AI Test Generation Limitations
+
+AI-generated tests require careful review:
+
+- **False sense of security**: High coverage doesn't mean good tests
+- **Missing business logic**: AI doesn't understand domain requirements
+- **Over-mocking**: May mock too much, missing integration issues
+- **Outdated patterns**: May suggest deprecated testing approaches
+- **No test maintenance**: Doesn't update tests when code changes
+
+:::
+
+**What AI Does Well:**
+
+- Boilerplate test structure
+- Common edge cases (null, empty, negative)
+- Standard happy path scenarios
+- Test setup and teardown code
+
+**What Requires Human Judgment:**
+
+- Business logic validation
+- Security test scenarios
+- Performance test criteria
+- User experience testing
+- Complex integration scenarios
+
+### Workflow Integration
+
+```mermaid
+flowchart LR
+    A[Write Code] --> B[Ask AI for Tests]
+    B --> C[Review Generated Tests]
+    C --> D{Tests Adequate?}
+    D -->|No| E[Add Missing Cases]
+    D -->|Yes| F[Run Tests]
+    E --> F
+    F --> G{Tests Pass?}
+    G -->|No| H[Fix Code or Tests]
+    H --> F
+    G -->|Yes| I[Commit]
+
+    style B fill:#E1F5FF
+    style C fill:#FFE4B5
+    style I fill:#90EE90
+```
+
+:::tip Learn More
+
+For advanced prompting techniques to generate better tests, see the [Prompt Engineering](/prompt-engineering) chapter,
+specifically the "Testing and Test Generation" section.
+
+:::
 
 ## Continuous Testing
 

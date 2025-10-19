@@ -1,6 +1,7 @@
 ---
 id: pair-programming
 title: Pair Programming
+sidebar_label: Pair Programming
 description: >-
   A deep-dive into five techniques; their typical use-cases, effectiveness and how to practice these techniques
   remotely.
@@ -410,6 +411,424 @@ gantt
     Developer B drives     :done, 10:40, 30m
     Retrospective          :active, 11:10, 10m
 ```
+
+### AI as a Pair Programming Partner
+
+Modern AI coding assistants like Cursor, GitHub Copilot, and Claude can serve as virtual pair programming partners,
+providing many benefits of pairing while allowing solo development. While AI can't fully replace human collaboration, it
+offers unique advantages for certain scenarios.
+
+```mermaid
+graph LR
+    A[Developer<br/>Driver & Navigator] <--> B[AI Assistant<br/>Contextual Partner]
+    B --> C[Code Suggestions]
+    B --> D[Bug Detection]
+    B --> E[Refactoring Ideas]
+    B --> F[Documentation]
+
+    style A fill:#E1F5FF
+    style B fill:#FFE4B5
+    style C fill:#F0F0F0
+    style D fill:#F0F0F0
+    style E fill:#F0F0F0
+    style F fill:#F0F0F0
+```
+
+**Benefits of AI Pairing:**
+
+- **Always available**: No scheduling needed, pair anytime
+- **Patient teacher**: Never tired, always willing to explain
+- **Consistent quality**: Applies best practices uniformly
+- **Immediate feedback**: Catch issues as you type
+- **Knowledge amplification**: Access to vast coding knowledge
+- **No social pressure**: Ask "basic" questions without judgment
+
+**Limitations Compared to Human Pairing:**
+
+- **No domain expertise**: AI doesn't understand your business context
+- **No creative insights**: Can't challenge architectural assumptions
+- **No mentoring relationship**: Can't provide career guidance
+- **No team building**: Doesn't strengthen team bonds
+- **Limited context**: May not grasp full project complexity
+
+#### AI Pairing Patterns
+
+**Pattern 1: AI as Navigator**
+
+You drive, AI provides strategic guidance:
+
+```typescript
+// You (Driver): I need to implement user authentication
+
+// AI (Navigator): Let's approach this step-by-step:
+// 1. First, let's create the authentication middleware
+// 2. Then implement token generation
+// 3. Add password hashing
+// 4. Finally, create login/logout endpoints
+
+// Start with middleware - what authentication strategy? JWT or sessions?
+
+// You: JWT tokens
+
+// AI: Good choice for stateless auth. Let's start:
+
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+  };
+}
+
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: string;
+      email: string;
+    };
+
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// AI: This middleware looks good. Next, let's create the token generation function.
+// Should we add token expiration?
+```
+
+**Pattern 2: AI as Driver**
+
+You navigate, AI implements:
+
+```typescript
+// You (Navigator): Create a rate limiting function that:
+// - Allows 100 requests per minute per user
+// - Uses Redis for distributed tracking
+// - Returns retry-after header when limited
+
+// AI (Driver): Here's the implementation:
+
+import Redis from 'ioredis';
+
+const redis = new Redis(process.env.REDIS_URL);
+
+interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  retryAfter?: number;
+}
+
+export async function checkRateLimit(
+  userId: string,
+  limit: number = 100,
+  windowSeconds: number = 60
+): Promise<RateLimitResult> {
+  const key = `ratelimit:${userId}`;
+  const now = Date.now();
+  const windowStart = now - windowSeconds * 1000;
+
+  // Remove old entries
+  await redis.zremrangebyscore(key, 0, windowStart);
+
+  // Count requests in current window
+  const currentCount = await redis.zcard(key);
+
+  if (currentCount >= limit) {
+    // Get oldest request timestamp
+    const oldest = await redis.zrange(key, 0, 0, 'WITHSCORES');
+    const retryAfter = Math.ceil((parseInt(oldest[1]) + windowSeconds * 1000 - now) / 1000);
+
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfter,
+    };
+  }
+
+  // Add current request
+  await redis.zadd(key, now, `${now}`);
+  await redis.expire(key, windowSeconds);
+
+  return {
+    allowed: true,
+    remaining: limit - currentCount - 1,
+  };
+}
+
+// You (Navigator): Good! Now add middleware to apply this to routes.
+```
+
+**Pattern 3: Ping Pong with AI**
+
+Alternate between writing tests and implementation:
+
+```typescript
+// You: Write test for user registration
+
+describe('User Registration', () => {
+  it('should create a new user with valid data', async () => {
+    const userData = {
+      email: 'test@example.com',
+      password: 'SecurePass123!',
+      name: 'Test User',
+    };
+
+    const user = await registerUser(userData);
+
+    expect(user).toHaveProperty('id');
+    expect(user.email).toBe(userData.email);
+    expect(user.password).not.toBe(userData.password); // Should be hashed
+  });
+});
+
+// AI: Here's the implementation to pass the test:
+
+import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
+
+interface UserData {
+  email: string;
+  password: string;
+  name: string;
+}
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  password: string;
+}
+
+export async function registerUser(userData: UserData): Promise<User> {
+  // Hash password
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+  // Create user
+  const user: User = {
+    id: uuidv4(),
+    email: userData.email,
+    name: userData.name,
+    password: hashedPassword,
+  };
+
+  // Save to database (implementation depends on your ORM)
+  await db.users.create(user);
+
+  return user;
+}
+
+// You: Now write test for duplicate email validation
+```
+
+#### Best Practices for AI Pairing
+
+**1. Be Explicit About Context**
+
+```typescript
+// Bad: Vague request
+// "Create a function to process orders"
+
+// Good: Specific context
+/*
+ * We use:
+ * - TypeScript with strict mode
+ * - Prisma for database
+ * - Zod for validation
+ *
+ * Create an order processing function that:
+ * - Validates order items exist in inventory
+ * - Calculates total with tax
+ * - Creates order record in database
+ * - Returns order with ID and confirmation number
+ */
+```
+
+**2. Review AI Code Critically**
+
+Always verify AI-generated code:
+
+```typescript
+// AI might generate:
+async function deleteUser(userId: string) {
+  await db.user.delete({ where: { id: userId } });
+  return { success: true };
+}
+
+// You should catch:
+// ❌ No error handling
+// ❌ No authorization check
+// ❌ No cascade delete (orphaned data?)
+// ❌ No soft delete consideration
+// ❌ No audit log
+
+// Corrected version:
+async function deleteUser(userId: string, requestingUserId: string) {
+  // Authorization check
+  if (userId !== requestingUserId && !isAdmin(requestingUserId)) {
+    throw new UnauthorizedError('Cannot delete other users');
+  }
+
+  try {
+    // Soft delete instead of hard delete
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        deletedAt: new Date(),
+        email: `deleted_${userId}@example.com`, // Free up email
+      },
+    });
+
+    // Audit log
+    await auditLog.create({
+      action: 'USER_DELETED',
+      userId,
+      performedBy: requestingUserId,
+      timestamp: new Date(),
+    });
+
+    return { success: true, user };
+  } catch (error) {
+    logger.error('Failed to delete user', { userId, error });
+    throw new Error('Failed to delete user');
+  }
+}
+```
+
+**3. Use AI for Learning**
+
+```typescript
+// Ask AI to explain code you don't understand
+// You: Explain this reduce function
+
+const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+// AI: This uses Array.reduce to calculate the total cost:
+// - reduce iterates through 'items' array
+// - 'sum' is the accumulator (starts at 0)
+// - For each item, multiply price × quantity and add to sum
+// - Returns final sum
+//
+// Example:
+// items = [
+//   { price: 10, quantity: 2 },  // 20
+//   { price: 5, quantity: 3 }    // 15
+// ]
+// Result: 20 + 15 = 35
+```
+
+**4. Iterate Through Conversation**
+
+```typescript
+// First iteration: Basic implementation
+// You: Create a caching function
+
+// AI generates basic cache...
+
+// You: Add TTL support
+
+// AI adds expiration...
+
+// You: Add cache invalidation by pattern
+
+// AI adds wildcard invalidation...
+
+// You: Add metrics tracking
+
+// AI adds hit/miss counters...
+```
+
+#### Comparing AI vs. Human Pairing
+
+| Aspect           | AI Pairing                   | Human Pairing                  |
+| ---------------- | ---------------------------- | ------------------------------ |
+| **Availability** | ✅ 24/7, instant             | ⏰ Requires scheduling         |
+| **Context**      | ⚠️ Limited to code           | ✅ Understands business/team   |
+| **Learning**     | ✅ Explains concepts well    | ✅ Mentors career growth       |
+| **Creativity**   | ⚠️ Suggests patterns         | ✅ Challenges assumptions      |
+| **Social**       | ❌ No relationship building  | ✅ Strengthens team bonds      |
+| **Speed**        | ✅ Instant responses         | ⏰ Human thinking time         |
+| **Code Quality** | ✅ Consistent best practices | ✅ Context-aware decisions     |
+| **Debugging**    | ✅ Spots common bugs         | ✅ Understands system behavior |
+| **Architecture** | ⚠️ Local decisions only      | ✅ System-wide perspective     |
+| **Cost**         | 💰 Subscription/API costs    | 💰 Developer time              |
+
+**Recommendation: Hybrid Approach**
+
+```mermaid
+flowchart TD
+    A[Development Task] --> B{Complexity?}
+    B -->|Simple/Medium| C[AI Pairing]
+    B -->|Complex/Critical| D[Human Pairing]
+    C --> E{Stuck or Need Review?}
+    E -->|Yes| D
+    E -->|No| F[Complete]
+    D --> F
+
+    style C fill:#E1F5FF
+    style D fill:#FFE4B5
+    style F fill:#90EE90
+```
+
+**Use AI Pairing For:**
+
+- Boilerplate code generation
+- Test writing
+- Refactoring well-understood code
+- Learning new syntax/libraries
+- Solo debugging sessions
+
+**Use Human Pairing For:**
+
+- Critical business logic
+- Architecture decisions
+- Complex problem-solving
+- Knowledge transfer
+- Onboarding new team members
+
+#### Tools for AI Pairing
+
+**Cursor AI**
+
+- Inline suggestions as you type
+- Chat with codebase context
+- Multi-file editing with Composer
+- Terminal integration
+
+**GitHub Copilot**
+
+- IDE-integrated suggestions
+- Chat interface for questions
+- PR summaries and reviews
+
+**Claude via API**
+
+- Complex reasoning tasks
+- Detailed explanations
+- Multi-turn conversations
+
+**ChatGPT Code Interpreter**
+
+- Code execution and testing
+- Data analysis
+- Algorithm explanation
+
+:::tip Learn More About Prompting
+
+For techniques to get the most out of AI pair programming, see the [Prompt Engineering](/prompt-engineering) chapter for
+detailed strategies and patterns.
+
+:::
 
 ### Mob Programming
 

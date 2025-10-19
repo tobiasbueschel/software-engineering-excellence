@@ -1,6 +1,7 @@
 ---
 id: code-reviews
 title: Code Reviews
+sidebar_label: Code Reviews
 description: >-
   Code reviews not only need to be given effectively, it is also important to know how to receive them well
 keywords:
@@ -787,6 +788,316 @@ flowchart TD
     G --> G1[Automated tools]
     G --> G2[Quick approval]
 ```
+
+## AI-Assisted Code Reviews
+
+AI coding assistants are transforming code reviews by automating routine checks and augmenting human reviewers with
+intelligent suggestions. While AI cannot replace human judgment, it can significantly accelerate the review process and
+catch issues humans might miss.
+
+### Benefits of AI in Code Reviews
+
+- **Faster initial screening**: AI can instantly identify common issues, letting humans focus on architecture and logic
+- **Consistent feedback**: AI applies the same standards across all reviews without fatigue or bias
+- **24/7 availability**: Get immediate feedback on code, even outside team working hours
+- **Learning opportunities**: AI explanations help developers understand why something is an issue
+- **Reduced reviewer burden**: Automate style, formatting, and simple security checks
+
+### AI-Assisted Review Workflow
+
+```mermaid
+flowchart TD
+    A[Developer creates PR] --> B[AI Pre-Review]
+    B --> C{AI finds issues?}
+    C -->|Yes| D[Auto-comment on PR]
+    D --> E[Developer fixes AI findings]
+    E --> B
+    C -->|No| F[Human reviewer examines]
+    F --> G{Human finds issues?}
+    G -->|Yes| H[Human comments]
+    H --> I[Developer addresses feedback]
+    I --> F
+    G -->|No| J[Approve & Merge]
+
+    style B fill:#E1F5FF
+    style F fill:#FFE4B5
+    style J fill:#90EE90
+```
+
+### Using AI Tools for Code Review
+
+#### GitHub Copilot for Reviews
+
+```javascript
+// Ask Copilot to review code by adding a comment:
+// Copilot: Review this function for security issues
+
+async function getUserData(userId) {
+  const query = `SELECT * FROM users WHERE id = ${userId}`;
+  return await db.query(query);
+}
+
+// Copilot will identify:
+// 🔴 Critical: SQL injection vulnerability - use parameterized queries
+// 🟡 Important: No error handling for database failures
+// 🔵 Suggestion: Consider limiting fields returned instead of SELECT *
+```
+
+#### AI-Powered PR Review Tools
+
+Popular tools that integrate with your workflow:
+
+- **CodeRabbit**: Automated PR reviews with contextual suggestions
+- **Amazon CodeGuru**: ML-powered code reviews for AWS applications
+- **Qodana**: JetBrains AI code quality platform
+- **DeepSource**: Continuous code review and analysis
+- **SonarQube with AI**: Static analysis enhanced with ML insights
+
+#### Using Claude or ChatGPT for Reviews
+
+````markdown
+Prompt: Review this code for security, performance, and maintainability issues:
+
+```typescript
+export async function processPayment(orderId: string, amount: number) {
+  const order = await db.orders.findById(orderId);
+
+  if (order.total !== amount) {
+    throw new Error('Amount mismatch');
+  }
+
+  const result = await paymentGateway.charge({
+    amount: amount,
+    currency: 'USD',
+    description: `Order ${orderId}`,
+  });
+
+  await db.orders.update(orderId, { status: 'paid' });
+
+  return result;
+}
+```
+````
+
+**AI Response:**
+
+🔴 **Critical Issues:**
+
+1. Race condition: No transaction wrapper - order could be updated twice
+2. No authentication check - anyone with orderId can process payment
+3. Missing idempotency - could charge customer multiple times
+
+🟡 **Important Issues:**
+
+1. No error handling if payment gateway fails
+2. Amount not validated (negative numbers, zero)
+3. No logging for audit trail
+
+🔵 **Suggestions:**
+
+1. Add TypeScript strict types for parameters
+2. Extract payment gateway logic to separate service
+3. Consider using a state machine for order status
+
+````
+
+### Best Practices for AI-Assisted Reviews
+
+#### 1. Use AI for First-Pass Reviews
+
+Let AI catch obvious issues before human review:
+
+```javascript
+// .github/workflows/ai-review.yml
+name: AI Code Review
+
+on: [pull_request]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: AI Code Review
+        uses: coderabbitai/ai-pr-reviewer@latest
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+````
+
+#### 2. Combine AI with Automated Tools
+
+Create a comprehensive pre-review pipeline:
+
+```yaml
+# Automated checks before human review
+- Linting (ESLint, Prettier)
+- Static analysis (SonarQube)
+- Security scanning (Snyk, CodeQL)
+- AI review (CodeRabbit, GPT-4)
+- Unit tests pass
+- Coverage threshold met
+# Only then: Request human review
+```
+
+#### 3. Train Your Team on AI Feedback
+
+Help developers interpret and act on AI suggestions:
+
+```markdown
+## Understanding AI Review Comments
+
+**When AI says "Consider..."**
+
+- This is a suggestion, not a requirement
+- Evaluate if it applies to your context
+- Feel free to dismiss with justification
+
+**When AI says "Potential security issue..."**
+
+- Always investigate thoroughly
+- AI can have false positives, but don't ignore
+- Confirm with security best practices
+
+**When AI suggests refactoring:**
+
+- Balance improvement vs. scope creep
+- Consider creating a follow-up task
+- Don't let perfect be the enemy of good
+```
+
+#### 4. Review AI Suggestions Critically
+
+AI is not infallible:
+
+```javascript
+// AI might suggest:
+// "Use const instead of let since value never changes"
+let retryCount = 0;
+sendRequest();
+
+// But the code might be incomplete:
+function sendRequest() {
+  fetch('/api/data')
+    .then((response) => response.json())
+    .catch((error) => {
+      retryCount++; // AI missed this mutation
+      if (retryCount < 3) {
+        sendRequest();
+      }
+    });
+}
+
+// Always verify AI suggestions in full context
+```
+
+### Limitations of AI Code Reviews
+
+:::warning AI Cannot Replace Human Judgment
+
+AI tools have limitations that require human oversight:
+
+- **Limited context**: AI may not understand business logic or domain-specific requirements
+- **False positives**: AI can flag correct code as problematic
+- **No architectural insight**: AI focuses on local code, not system-wide design
+- **Cultural blindness**: AI doesn't understand team dynamics or coding culture
+- **Ethical considerations**: AI can't evaluate ethical implications of code
+
+:::
+
+**What AI Does Well:**
+
+- Syntax and style checking
+- Common security vulnerabilities (SQL injection, XSS)
+- Performance anti-patterns
+- Test coverage gaps
+- Documentation completeness
+
+**What Requires Humans:**
+
+- Architecture and design decisions
+- Business logic correctness
+- User experience considerations
+- Trade-off evaluations
+- Team and product context
+
+### Integrating AI into Review Process
+
+**Recommended Workflow:**
+
+```mermaid
+flowchart LR
+    A[PR Created] --> B[Automated Checks<br/>Linting, Tests]
+    B --> C[AI Review<br/>Quick Scan]
+    C --> D[Developer Self-Review<br/>of AI Feedback]
+    D --> E[Human Review<br/>Focus on Logic & Design]
+    E --> F[Final Approval]
+
+    style A fill:#E8E8E8
+    style C fill:#E1F5FF
+    style E fill:#FFE4B5
+    style F fill:#90EE90
+```
+
+**Guidelines:**
+
+1. **AI as First Responder**: Let AI provide immediate feedback while human reviewers are assigned
+2. **Human as Final Authority**: Humans make the merge decision, not AI
+3. **Selective Application**: Use AI for all PRs, but adjust scrutiny level based on criticality
+4. **Continuous Learning**: Track false positives/negatives to improve AI configurations
+
+### Example: AI-Enhanced Review Comment
+
+```javascript
+// Original code
+function validateUser(user) {
+  if (user.age < 18) return false;
+  if (!user.email.includes('@')) return false;
+  if (user.password.length < 6) return false;
+  return true;
+}
+
+// AI-generated review comment
+// 🟡 Important: Validation logic has several issues
+//
+// 1. Email validation is too simple - "test@" would pass
+//    Suggestion: Use regex /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+//
+// 2. Password validation is weak (only length check)
+//    Suggestion: Enforce complexity requirements
+//
+// 3. Function doesn't provide specific error messages
+//    Suggestion: Return validation error details
+//
+// 4. Consider using a validation library (Zod, Yup, Joi)
+//    for more robust validation
+//
+// Suggested refactoring:
+
+import { z } from 'zod';
+
+const userSchema = z.object({
+  age: z.number().min(18, 'Must be 18 or older'),
+  email: z.string().email('Invalid email format'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain uppercase letter')
+    .regex(/[0-9]/, 'Password must contain a number'),
+});
+
+function validateUser(user) {
+  return userSchema.safeParse(user);
+}
+```
+
+:::tip Prompt Engineering for Code Reviews
+
+For best AI review results, see the [Prompt Engineering](/prompt-engineering) chapter for techniques on how to request
+effective code reviews from AI assistants.
+
+:::
 
 ## Measuring Code Review Effectiveness
 
