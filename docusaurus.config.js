@@ -110,30 +110,11 @@ module.exports = {
         content:
           'software engineering excellence, software engineering, best practices, software development, open-source, clean code, testing, CI/CD, architecture, design patterns, code review, agile, microservices, performance optimization, security, refactoring',
       },
-      {
-        name: 'description',
-        content: 'Proven practices for developing software effectively',
-      },
+      // Note: og:*, twitter:*, title and description are omitted here
+      // They will be set automatically by Docusaurus from each page's frontmatter
       {
         property: 'og:type',
         content: 'website',
-      },
-      {
-        property: 'og:title',
-        content: 'Software Engineering Excellence - Handbook',
-      },
-      {
-        property: 'og:description',
-        content:
-          'A comprehensive guide covering proven practices, principles, and techniques for developing high-quality, secure, reliable, and maintainable software.',
-      },
-      {
-        property: 'og:image',
-        content: `${siteUrl}/img/software_engineering_excellence.png`,
-      },
-      {
-        property: 'og:url',
-        content: siteUrl,
       },
       {
         property: 'og:site_name',
@@ -142,19 +123,6 @@ module.exports = {
       {
         name: 'twitter:card',
         content: 'summary_large_image',
-      },
-      {
-        name: 'twitter:title',
-        content: 'Software Engineering Excellence - Handbook',
-      },
-      {
-        name: 'twitter:description',
-        content:
-          'A comprehensive guide covering proven practices, principles, and techniques for developing high-quality software.',
-      },
-      {
-        name: 'twitter:image',
-        content: `${siteUrl}/img/software_engineering_excellence.png`,
       },
       {
         name: 'twitter:creator',
