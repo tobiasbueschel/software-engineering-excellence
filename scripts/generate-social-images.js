@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { createCanvas, loadImage } = require('canvas');
+const sharp = require('sharp');
 
 // Social media image dimensions (Open Graph standard)
 const WIDTH = 1200;
@@ -37,45 +37,60 @@ async function generateSocialImage(svgFileName) {
 
     console.log(`Processing: ${svgFileName}...`);
 
-    // Create canvas
-    const canvas = createCanvas(WIDTH, HEIGHT);
-    const ctx = canvas.getContext('2d');
+    // Read the original SVG
+    const originalSvg = fs.readFileSync(svgPath, 'utf-8');
 
-    // Create gradient background (135deg diagonal)
-    const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-    gradient.addColorStop(0, GRADIENT_START);
-    gradient.addColorStop(1, GRADIENT_END);
+    // Get SVG dimensions
+    const widthMatch = originalSvg.match(/width="(\d+)"/);
+    const heightMatch = originalSvg.match(/height="(\d+)"/);
+    const viewBoxMatch = originalSvg.match(/viewBox="([^"]+)"/);
 
-    // Fill background with gradient
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    let svgWidth = 500;
+    let svgHeight = 500;
 
-    // Load and draw SVG
-    const image = await loadImage(svgPath);
+    if (viewBoxMatch) {
+      const viewBox = viewBoxMatch[1].split(' ');
+      svgWidth = parseFloat(viewBox[2]);
+      svgHeight = parseFloat(viewBox[3]);
+    } else if (widthMatch && heightMatch) {
+      svgWidth = parseFloat(widthMatch[1]);
+      svgHeight = parseFloat(heightMatch[1]);
+    }
 
     // Calculate dimensions to fit the image (with padding)
     const padding = 100;
     const maxWidth = WIDTH - padding * 2;
     const maxHeight = HEIGHT - padding * 2;
 
-    let imgWidth = image.width;
-    let imgHeight = image.height;
-
-    // Scale to fit
-    const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
-    imgWidth *= scale;
-    imgHeight *= scale;
+    const scale = Math.min(maxWidth / svgWidth, maxHeight / svgHeight, 1);
+    const scaledWidth = svgWidth * scale;
+    const scaledHeight = svgHeight * scale;
 
     // Center the image
-    const x = (WIDTH - imgWidth) / 2;
-    const y = (HEIGHT - imgHeight) / 2;
+    const x = (WIDTH - scaledWidth) / 2;
+    const y = (HEIGHT - scaledHeight) / 2;
 
-    // Draw the SVG
-    ctx.drawImage(image, x, y, imgWidth, imgHeight);
+    // Create an SVG with gradient background and embedded illustration
+    const compositeSvg = `
+      <svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${GRADIENT_START};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${GRADIENT_END};stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#grad)" />
+        <g transform="translate(${x}, ${y}) scale(${scale})">
+          ${originalSvg
+            .replace(/<\?xml[^?]*\?>/g, '')
+            .replace(/<svg[^>]*>/i, '')
+            .replace(/<\/svg>/i, '')}
+        </g>
+      </svg>
+    `;
 
-    // Save as PNG
-    const buffer = canvas.toBuffer('image/png');
-    fs.writeFileSync(outputPath, buffer);
+    // Convert to PNG using sharp
+    await sharp(Buffer.from(compositeSvg)).png().toFile(outputPath);
 
     console.log(`  ✅ Generated: ${path.basename(outputPath)}`);
   } catch (error) {
