@@ -1,0 +1,284 @@
+.chapterSection {
+  padding: 1.5rem 0;
+  width: 100%;
+}
+
+.chapterGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.chapterCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.chapterCard {
+  display: block;
+  height: 100%;
+  text-decoration: none !important;
+  color: inherit;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--ifm-card-background-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.chapterCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.12), 0 8px 16px -8px rgba(0, 0, 0, 0.08);
+  border-color: var(--ifm-color-primary);
+  text-decoration: none !important;
+}
+
+[data-theme='dark'] .chapterCard:hover {
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -8px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile: Disable hover effects on touch devices for better UX */
+@media (hover: none) {
+  .chapterCard:hover {
+    transform: none;
+  }
+
+  .imageOverlay {
+    display: none;
+  }
+}
+
+.cardInner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.imageContainer {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ifm-color-primary-lightest) 0%, var(--ifm-color-primary-lighter) 100%);
+  padding: 2rem;
+}
+
+[data-theme='dark'] .imageContainer {
+  background: linear-gradient(135deg, var(--ifm-color-primary-darkest) 0%, var(--ifm-color-emphasis-100) 100%);
+}
+
+.chapterImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.chapterCard:hover .chapterImage {
+  transform: scale(1.05);
+}
+
+.imageOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chapterCard:hover .imageOverlay {
+  opacity: 1;
+}
+
+.readMore {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transform: translateY(10px);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chapterCard:hover .readMore {
+  transform: translateY(0);
+}
+
+.cardContent {
+  flex: 1;
+  padding: 1.5rem 1.5rem 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ifm-heading-color);
+  transition: color 0.3s ease;
+}
+
+.chapterCard:hover .cardTitle {
+  color: var(--ifm-color-primary);
+}
+
+.cardDescription {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .cardDescription {
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* Responsive adjustments */
+
+/* Small mobile devices (< 480px) */
+@media (max-width: 479px) {
+  .chapterSection {
+    padding: 1rem 0;
+  }
+
+  .chapterGrid {
+    gap: 1.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .chapterCard {
+    border-radius: 8px;
+  }
+
+  .imageContainer {
+    height: 180px;
+    padding: 1.25rem;
+  }
+
+  .cardContent {
+    padding: 1rem 1rem 1.5rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .cardTitle {
+    font-size: 1.1rem;
+  }
+
+  .cardDescription {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+  }
+
+  .readMore {
+    font-size: 1rem;
+  }
+}
+
+/* Mobile devices (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .chapterGrid {
+    gap: 1.75rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .imageContainer {
+    height: 200px;
+    padding: 1.5rem;
+  }
+
+  .cardContent {
+    padding: 1.25rem 1.25rem 1.75rem 1.25rem;
+  }
+
+  .cardTitle {
+    font-size: 1.15rem;
+  }
+
+  .cardDescription {
+    font-size: 0.9rem;
+  }
+}
+
+/* Tablets (768px - 996px) - 2 columns */
+@media (min-width: 768px) and (max-width: 996px) {
+  .chapterGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+
+  .imageContainer {
+    height: 200px;
+  }
+
+  .cardTitle {
+    font-size: 1.2rem;
+  }
+
+  .cardContent {
+    padding: 1.5rem 1.5rem 1.75rem 1.5rem;
+  }
+}
+
+/* Large tablets and small desktops (997px - 1200px) - 3 columns */
+@media (min-width: 997px) and (max-width: 1200px) {
+  .chapterGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+
+  .imageContainer {
+    height: 200px;
+    padding: 1.75rem;
+  }
+
+  .cardTitle {
+    font-size: 1.2rem;
+  }
+}
+
+/* Large desktops (> 1200px) - 3 columns */
+@media (min-width: 1201px) {
+  .chapterSection {
+    padding: 2.5rem 0;
+  }
+
+  .chapterGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+  }
+
+  .imageContainer {
+    height: 240px;
+  }
+
+  .cardTitle {
+    font-size: 1.3rem;
+  }
+
+  .cardDescription {
+    font-size: 0.95rem;
+  }
+}

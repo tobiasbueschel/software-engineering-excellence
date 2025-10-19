@@ -1,27 +1,26 @@
 import React from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
+import styles from './ChapterList.module.css';
 
 function Chapter({ imageUrl, title, path, description }) {
   const imgUrl = useBaseUrl(imageUrl);
 
   return (
-    <div className="col col--4" style={{ marginBottom: '1rem' }}>
-      <div className="card shadow--lw" style={{ height: '100%' }}>
-        <div className="card__image text--center">
-          <a className="text--center" href={path} target="_self">
-            <img src={imgUrl} alt={title} width="80%" height="200" />
-          </a>
+    <div className={styles.chapterCol}>
+      <a href={path} className={styles.chapterCard} target="_self">
+        <div className={styles.cardInner}>
+          <div className={styles.imageContainer}>
+            <img src={imgUrl} alt={title} className={styles.chapterImage} />
+            <div className={styles.imageOverlay}>
+              <span className={styles.readMore}>Read More →</span>
+            </div>
+          </div>
+          <div className={styles.cardContent}>
+            <h3 className={styles.cardTitle}>{title}</h3>
+            <p className={styles.cardDescription}>{description}</p>
+          </div>
         </div>
-        <div className="card__body">
-          <h4>{title}</h4>
-          <small>{description}</small>
-        </div>
-        <div className="card__footer">
-          <a href={path} className="button button--primary button--block">
-            Read
-          </a>
-        </div>
-      </div>
+      </a>
     </div>
   );
 }
@@ -30,13 +29,11 @@ export default function ChapterList({ chapters }) {
   const sortedChapters = chapters.sort((a, b) => a.title.localeCompare(b.title));
 
   return (
-    <section>
-      <div className="container">
-        <div className="row">
-          {sortedChapters.map((props, index) => (
-            <Chapter key={index} {...props} />
-          ))}
-        </div>
+    <section className={styles.chapterSection}>
+      <div className={styles.chapterGrid}>
+        {sortedChapters.map((props, index) => (
+          <Chapter key={index} {...props} />
+        ))}
       </div>
     </section>
   );
