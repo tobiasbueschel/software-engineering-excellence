@@ -20,12 +20,19 @@ environments. Branch-Based Testing short-circuits that delay by producing a **pr
 allowing reviewers, QA engineers, designers, and product owners to interact with, test, and provide feedback on the
 exact change set.
 
-:::tip Key Insight Branch-Based Testing transforms code review from a static activity into an interactive experience
-where stakeholders can click, test, and validate changes in a production-like environment. :::
+:::tip Key Insight
 
-:::info Related Content Branch-based testing is one of several testing strategies. For a comprehensive overview of
-software testing, including unit tests, integration tests, E2E testing, TDD, and BDD, see the
-[Software Testing](/testing) chapter. :::
+Branch-Based Testing transforms code review from a static activity into an interactive experience where stakeholders can
+click, test, and validate changes in a production-like environment.
+
+:::
+
+:::info Related Content
+
+Branch-based testing is one of several testing strategies. For a comprehensive overview of software testing, including
+unit tests, integration tests, E2E testing, TDD, and BDD, see the [Software Testing](/testing) chapter.
+
+:::
 
 ## Why Branch-Based Testing?
 
@@ -89,9 +96,13 @@ flowchart LR
     I --> L[Destroy Preview]
 ```
 
-:::warning Important Distinction Continuous Integration (CI) traditionally means integrating to the **main branch at
-least daily**. Running CI pipelines on feature branches is helpful but isn't CI in the strict sense. Branch-Based
-Testing works best with trunk-based development or short-lived feature branches. Keep merges to main frequent. :::
+:::warning Important Distinction
+
+Continuous Integration (CI) traditionally means integrating to the **main branch at least daily**. Running CI pipelines
+on feature branches is helpful but isn't CI in the strict sense. Branch-Based Testing works best with trunk-based
+development or short-lived feature branches. Keep merges to main frequent.
+
+:::
 
 ## Core Concepts and Vocabulary
 
