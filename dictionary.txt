@@ -53,3 +53,11 @@ Addy
 creational
 Osmani
 subclassing
+Cognitect
+madr
+MADR
+Nygard
+Nygard's
+RDBMS
+Zimmermann
+Zimmermann's

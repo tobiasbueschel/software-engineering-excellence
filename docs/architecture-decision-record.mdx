@@ -1,0 +1,190 @@
+---
+id: architecture-decision-record
+title: Architecture Decision Records
+---
+
+import DocumentationImage from '/img/undraw_google_docs.svg';
+
+<div className="text--center margin-bottom--lg">
+  <DocumentationImage width="80%" height="300px" />
+</div>
+
+> Architecture Decision Records (ADRs) are lightweight documents that capture a single, significant architectural
+> decision along with its context and consequences. ADRs form an auditable decision log that preserves the “why” behind
+> your system's design.
+
+## What is an ADR?
+
+An ADR documents one architecturally significant decision at a point in time, including:
+
+- Context (forces, constraints, and quality attributes at play)
+- The decision (the option chosen)
+- Consequences (trade-offs: positive and negative)
+
+This concise structure was popularized by Michael Nygard and is widely adopted across the industry. See the originals
+and guidance by Nygard and major cloud providers for best practices.
+
+- Cognitect/Nygard:
+  [Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+- Google Cloud: [Architecture decision records](https://cloud.google.com/architecture/architecture-decision-records)
+
+## Why use ADRs?
+
+- Improved onboarding: newcomers can understand the rationale behind major choices
+- Better alignment: writing ADRs forces explicit trade-off discussion and consensus
+- Faster revisits: when revisiting decisions, the context and rejected alternatives are clear
+- Preserved context: the code shows “what”; ADRs record “why”
+
+See also [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+and [Microsoft](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record)
+guidance for process and governance recommendations.
+
+- [AWS Prescriptive Guidance (ADR process)](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+- [Microsoft Learn (ADR overview)](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record)
+
+## Lifecycle and governance
+
+Keep ADRs close to code (versioned in the repo), never delete old records; supersede them instead. Typical states:
+
+1. Proposed - drafted and open for review (often via PR)
+2. Accepted - agreed and merged; represents current direction
+3. Superseded - replaced by a new ADR that links back to this one
+4. Rejected - considered but not adopted (kept for history)
+
+References: [Nygard](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions);
+[AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html);
+[Google Cloud overview](https://cloud.google.com/architecture/architecture-decision-records).
+
+## Where to store ADRs
+
+- Use plain Markdown files under version control.
+- Common structure: `/adr/` or `/docs/adr/` with numbered files, e.g. `001-use-postgresql.md`.
+- Link ADRs from PRs and architecture diagrams/models when relevant.
+
+[Google Cloud](https://cloud.google.com/architecture/architecture-decision-records) recommends keeping ADRs in the same
+repository for visibility and versioning.
+
+## When to write an ADR
+
+Write ADRs for architecturally significant decisions, for example when a choice:
+
+- Impacts system qualities (security, performance, reliability, operability)
+- Is costly to reverse later
+- Introduces/exchanges key dependencies, protocols, or patterns
+- Resolves significant team disagreement
+
+Examples: framework/language selection; database choice; service boundaries and protocols (REST vs gRPC); authN/Z
+strategy; deployment model changes; partitioning/tenancy decisions.
+
+See [Microsoft](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record)
+and [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html) for
+additional criteria and team workflows.
+
+## Templates you can use
+
+### Nygard's minimal ADR (most common)
+
+```markdown
+# ADR [Number]: [Short Title]
+
+- Status: Proposed | Accepted | Superseded by ADR-XYZ | Rejected
+- Date: YYYY-MM-DD
+- Authors: [Name(s)]
+
+## Context
+
+[Forces, constraints, quality attributes, assumptions]
+
+## Decision
+
+[We will …]
+
+## Consequences
+
+- Positive: …
+- Negative: …
+- Alternatives considered: … (and why rejected)
+```
+
+Source:
+[Michael Nygard — Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
+
+### MADR (Markdown ADR)
+
+MADR emphasizes considered options and decision outcome. See the official site for template and rationale.
+
+- Template and docs: [adr.github.io/madr](https://adr.github.io/madr/)
+
+### Y-Statements (ultra-concise)
+
+Olaf Zimmermann proposes a one-sentence structure capturing context, concern, choice, qualities, and downsides.
+
+```markdown
+In the context of [context], facing [concern], we decided for [option] and against [alternatives] to achieve
+[qualities], accepting [downsides].
+```
+
+References: [Olaf Zimmermann - Any Decision Records?](https://ozimmer.ch/practices/2021/04/23/AnyDecisionRecords.html) ·
+[Architectural Decisions — The Making Of](https://ozimmer.ch/practices/2020/04/27/ArchitectureDecisionMaking.html).
+
+## Best practices and pitfalls
+
+- One decision per ADR; keep it short (1-2 pages max)
+- Keep ADRs with code; review them like code (PRs)
+- Never delete; supersede when changing direction
+- Capture real trade-offs; include downsides and risks
+- Avoid “any decision record” bloat—focus on architectural significance
+- Periodically curate and tag ADRs; link related records
+
+See [InfoQ's guidance](https://www.infoq.com/articles/architectural-decision-record-purpose/) on avoiding dilution and
+[Zimmermann's cautions](https://ozimmer.ch/practices/2021/04/23/AnyDecisionRecords.html) against turning ADRs into “any
+decision records.”
+
+## Example ADR (mini)
+
+```markdown
+# ADR 001: Use PostgreSQL for transactional data
+
+- Status: Accepted
+- Date: 2025-10-19
+- Authors: Team
+
+## Context
+
+We require strong consistency and ACID guarantees for core transactional workflows. Our workload expects medium write
+volume, complex queries, and relational integrity. Team skills favor SQL RDBMS.
+
+## Decision
+
+Adopt PostgreSQL as the primary transactional data store for core services.
+
+## Consequences
+
+- Positive: ACID semantics, rich SQL, mature ecosystem and tooling
+- Negative: Operational complexity vs embedded/managed KV stores; vertical scaling limits without sharding
+- Alternatives considered: MySQL (similar capabilities; team preference for Postgres features), MongoDB (document model
+  and eventual consistency misaligned with ACID needs)
+```
+
+## Quick-start: add ADRs to your repo
+
+1. Create a folder `/adr/` (or `/docs/adr/`).
+2. Add a first record using the Nygard template above.
+3. Submit ADRs via PRs; discuss and mark status.
+4. When changing direction, add a new ADR that supersedes the old one.
+
+For extensive examples, see Joel Parker Henderson's ADR repository.
+
+## References
+
+- [Michael Nygard - Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+- [Google Cloud - Architecture decision records](https://cloud.google.com/architecture/architecture-decision-records)
+- [AWS Prescriptive Guidance - ADR process](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+- [AWS Architecture Blog - Best practices for ADRs](https://aws.amazon.com/blogs/architecture/master-architecture-decision-records-adrs-best-practices-for-effective-decision-making/)
+- [Microsoft Learn - Architecture decision record](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record)
+- [MADR - Markdown Architectural Decision Records](https://adr.github.io/madr/)
+- [Joel Parker Henderson - ADR examples](https://github.com/joelparkerhenderson/architecture-decision-record)
+- [Olaf Zimmermann - Any Decision Records?](https://ozimmer.ch/practices/2021/04/23/AnyDecisionRecords.html)
+- [Olaf Zimmermann - Architectural Decisions — The Making Of](https://ozimmer.ch/practices/2020/04/27/ArchitectureDecisionMaking.html)
+- [InfoQ - Has Your Architectural Decision Record Lost Its Purpose?](https://www.infoq.com/articles/architectural-decision-record-purpose/)
+- [Martin Fowler - Scaling the Practice of Architecture, Conversationally](https://martinfowler.com/articles/scaling-architecture-conversationally.html)

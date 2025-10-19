@@ -8,6 +8,7 @@ module.exports = {
     'debugging',
     'design-patterns',
     'documentation',
+    'architecture-decision-record',
     'feature-flags',
     'pair-programming',
     'refactoring-techniques',
