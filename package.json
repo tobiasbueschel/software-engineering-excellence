@@ -35,7 +35,7 @@
     "node": "20.x"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.6.3",
+    "@commitlint/cli": "^20.2.0",
     "@commitlint/config-conventional": "^17.6.7",
     "cspell": "^6.31.1",
     "gray-matter": "^4.0.3",
