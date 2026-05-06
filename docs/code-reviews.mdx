@@ -37,6 +37,70 @@ Modern code reviews typically happen asynchronously through pull requests (PRs) 
 developers submit their changes for review before merging them into the main codebase. This collaborative approach not
 only improves code quality but also facilitates knowledge transfer and team learning.
 
+## Code Review Objectives
+
+Code reviews work best when the team is clear about what the review is trying to achieve. The goal is not to catch every
+possible problem manually or to prove who is right. The goal is to reduce delivery risk while improving the codebase and
+the team that owns it.
+
+```mermaid
+flowchart TD
+    A[Code Review Objectives] --> B[Improve Internal Quality]
+    A --> C[Find Defects]
+    A --> D[Transfer Knowledge]
+    A --> E[Strengthen Ownership]
+    A --> F[Find Better Solutions]
+    A --> G[Reduce Release Risk]
+
+    B --> B1[Readability]
+    B --> B2[Maintainability]
+    B --> B3[Consistency]
+
+    C --> C1[Correctness]
+    C --> C2[Security]
+    C --> C3[Performance]
+
+    D --> D1[Codebase Context]
+    D --> D2[Quality Expectations]
+    D --> D3[Solution Approaches]
+
+    E --> E1[Mutual Responsibility]
+    E --> E2[Collective Code Ownership]
+
+    F --> F1[Alternative Designs]
+    F --> F2[Simpler Implementations]
+```
+
+### The Main Outcomes
+
+- **Better code quality**: Improve readability, maintainability, uniformity, and understandability.
+- **Defect discovery**: Catch correctness problems, performance risks, security vulnerabilities, and unsafe assumptions.
+- **Knowledge transfer**: Share context about the codebase, domain, conventions, and solution patterns.
+- **Mutual responsibility**: Build the habit that the team owns the code, not only the person who wrote the change.
+- **Better solutions**: Use review discussion to discover designs that go beyond the first implementation.
+- **Risk reduction**: Reduce the chance that a change breaks production, violates policy, or creates operational burden.
+
+## Types of Code Reviews
+
+Not every review needs the same format. The right review style depends on risk, urgency, team maturity, and the kind of
+feedback needed.
+
+| Type                          | How it works                                               | Best for                                                    |
+| ----------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------- |
+| **Formal inspection**         | Structured review with defined roles, checklist, and notes | Safety-critical systems, regulated environments             |
+| **Pair or instant review**    | Two people inspect and improve code while it is written    | Complex logic, onboarding, high-context decisions           |
+| **Over-the-shoulder review**  | Synchronous walkthrough by author and reviewer             | Fast feedback, small changes, exploratory design discussion |
+| **Asynchronous PR/MR review** | Tool-assisted review through pull or merge requests        | Most routine team changes, distributed teams, audit trails  |
+| **Meeting-based review**      | Scheduled group review of selected changes                 | Cross-team impact, architectural decisions, major refactors |
+| **Automated checks**          | Tools check style, tests, policy, and static analysis      | Repeatable checks that should not depend on reviewer taste  |
+
+:::tip Human Review Still Matters
+
+Automated checks are part of the review system, but they are not the review. Tools are good at repeatable rules. Humans
+are still needed for intent, design, tradeoffs, naming, maintainability, and product context.
+
+:::
+
 ## Benefits of Code Reviews
 
 ### Quality Improvements
@@ -178,7 +242,55 @@ jobs:
         uses: trufflesecurity/trufflehog@main
 ```
 
+#### 5. Automate What Should Not Be Debated
+
+Style, formatting, and repeatable policy checks should not consume human review attention. Agree on the standard once,
+codify it in tools, and let CI enforce it consistently.
+
+```mermaid
+flowchart LR
+    A[Repeated Review Debate] --> B[Team Agreement]
+    B --> C[Tool Configuration]
+    C --> D[Local Editor Feedback]
+    C --> E[CI/CD Checks]
+    D --> F[Cleaner PRs]
+    E --> F
+    F --> G[Human Review Focuses on Intent, Design, Risk, and Maintainability]
+```
+
+Move these checks out of subjective review comments:
+
+- **Formatting**: Use a formatter on save and in CI.
+- **Style rules**: Capture conventions in lint rules where possible.
+- **Build validation**: Require the project to compile before review.
+- **Tests**: Run unit, integration, and relevant end-to-end tests automatically.
+- **Security scanning**: Check dependencies, secrets, and common vulnerability patterns.
+- **Static analysis**: Detect code smells, duplication, complexity, and risky patterns early.
+
 ### For the Author (Submitting Code for Review)
+
+The author is responsible for making the reviewer's time useful. A good review starts before the PR is opened.
+
+```mermaid
+timeline
+    title Preparing Code for Review
+    Check your code
+      : Acceptance criteria met
+      : Runs locally
+      : Code is understandable and documented where needed
+    Create the PR or MR
+      : Explain what changed
+      : Explain why it changed
+      : Mark unfinished work as draft
+    Let automation run
+      : Tests pass
+      : Static analysis is clean or explained
+      : Merge conflicts are resolved
+    Submit for peer review
+      : Choose reviewers with context
+      : Include required approvers
+      : Communicate timing constraints
+```
 
 #### 1. Self-Review First
 
@@ -188,6 +300,8 @@ Before requesting a review, be your own first reviewer:
 - **Test thoroughly**: Run all tests, try edge cases, verify the fix/feature works
 - **Clean up**: Remove debug code, commented-out code, and console.logs
 - **Check formatting**: Ensure consistent formatting and style
+- **Check acceptance criteria**: Confirm the change does what the story, bug report, or task asked for
+- **Document the non-obvious**: Add context when the implementation depends on domain rules, tradeoffs, or constraints
 
 #### 2. Write a Clear PR Description
 
@@ -252,6 +366,75 @@ Approach reviews with the right attitude:
 - **Assume good intent**: The author wrote the best code they could with their current knowledge
 - **Educate, don't criticize**: Frame feedback as learning opportunities
 - **Praise good work**: Acknowledge clever solutions and improvements
+- **Stay on the same side**: Treat the code as the shared object under review, not as an extension of the author
+
+### Giving Feedback Well
+
+Good feedback is clear, grounded, and easy to act on. It improves the code without turning the review into a personal
+argument.
+
+#### Talk About the Code
+
+Frame comments around observable behavior in the code, not assumptions about the author:
+
+```markdown
+<!-- Avoid -->
+
+You forgot to handle empty input.
+
+<!-- Better -->
+
+This function returns `undefined` when the input array is empty. Should it return an empty result instead?
+```
+
+#### Prefer Principles and Evidence Over Opinions
+
+When possible, connect feedback to a principle, requirement, metric, or team convention:
+
+```markdown
+<!-- Opinion-only -->
+
+We should split this class into two.
+
+<!-- Principle-based -->
+
+Right now this class both downloads the file and parses it. Splitting those responsibilities would align better with our
+single-responsibility convention and make each behavior easier to test.
+```
+
+#### Use the OIR Model
+
+OIR keeps comments specific and less personal:
+
+```mermaid
+flowchart LR
+    A[Observation] --> B[Impact]
+    B --> C[Request]
+
+    A1[This method has 100 lines] -.-> A
+    B1[It is hard for me to grasp the essential flow] -.-> B
+    C1[Could we extract low-level details into named helper functions?] -.-> C
+```
+
+- **Observation**: State what you see in neutral, concrete terms.
+- **Impact**: Explain why it matters, preferably with an I-message.
+- **Request**: Suggest a next step, ask a question, or propose an alternative.
+
+#### Use Three Filters Before Commenting
+
+Before raising feedback, quickly check whether it is true, necessary, and kind.
+
+| Filter               | Ask yourself                                | Practical habits                                                                |
+| -------------------- | ------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Is it true?**      | Am I sure, or is this an opinion?           | Share sources, name assumptions, avoid right/wrong language, try a question     |
+| **Is it necessary?** | Does this matter for this change?           | Avoid low-value nitpicks, check your motive, choose the right channel           |
+| **Is it kind?**      | Will this help the author and the codebase? | Take a breath, avoid shaming, assume competence, offer gratitude where deserved |
+
+#### Accept Different Valid Solutions
+
+Code review is not a tool for forcing every change into the reviewer's personal style. If the current solution is
+correct, maintainable, and consistent with team standards, prefer a suggestion or follow-up discussion over blocking the
+merge.
 
 ### What to Review
 
@@ -371,65 +554,20 @@ const lastName = user.lastName;
 
 ### Review Checklist
 
-Use this checklist to ensure comprehensive reviews:
+Use this checklist to keep reviews comprehensive without turning every PR into an open-ended critique.
 
-#### Functionality ✅
-
-- [ ] Code does what it's supposed to do
-- [ ] Requirements are fully met
-- [ ] Edge cases are handled
-- [ ] Error scenarios are managed
-- [ ] Input validation is present
-
-#### Code Quality ✅
-
-- [ ] Code is readable and self-documenting
-- [ ] Variables and functions have meaningful names
-- [ ] Functions are small and focused (single responsibility)
-- [ ] No code duplication (DRY principle)
-- [ ] Appropriate use of comments (explain why, not what)
-- [ ] No commented-out code left behind
-
-#### Design & Architecture ✅
-
-- [ ] Follows established patterns and conventions
-- [ ] Appropriate abstraction level
-- [ ] Good separation of concerns
-- [ ] SOLID principles applied where relevant
-- [ ] No circular dependencies
-
-#### Testing ✅
-
-- [ ] Adequate test coverage (aim for 80%+)
-- [ ] Tests are clear and meaningful
-- [ ] Edge cases are tested
-- [ ] Mock/stub usage is appropriate
-- [ ] Tests are fast and reliable
-
-#### Security ✅
-
-- [ ] Input is validated and sanitized
-- [ ] No hardcoded secrets or credentials
-- [ ] Proper authentication and authorization
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS prevention (output encoding)
-- [ ] Sensitive data is encrypted
-
-#### Performance ✅
-
-- [ ] No obvious performance issues
-- [ ] Efficient algorithms and data structures
-- [ ] Database queries are optimized
-- [ ] Appropriate use of caching
-- [ ] No memory leaks
-
-#### Documentation ✅
-
-- [ ] Public APIs are documented
-- [ ] Complex logic has explanatory comments
-- [ ] README is updated if needed
-- [ ] CHANGELOG is updated
-- [ ] Breaking changes are documented
+| Area                           | Review questions                                                                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **Purpose**                    | Does the code do what it is intended to do? Does it meet the acceptance criteria?                   |
+| **Implementation**             | Is this a good way to achieve the intent? Is the design understandable, cohesive, and maintainable? |
+| **Performance**                | Is the code performant enough for expected data sizes and traffic? Should profiling be required?    |
+| **Security**                   | Does it meet security policies? Are inputs, secrets, permissions, and sensitive data handled well?  |
+| **Tests**                      | Does the change add or update meaningful tests? Are important edge cases and regressions covered?   |
+| **Style**                      | Are style checks automated? Does the code follow the agreed formatter and lint rules?               |
+| **Git hygiene**                | Is the PR title clear? Are commits meaningful or squashed according to team convention?             |
+| **TODO tracking**              | Are TODOs either removed or tracked in an issue with ownership?                                     |
+| **Documentation**              | Is the code understandable? Are public APIs, operational notes, or user-facing docs updated?        |
+| **Principles and conventions** | Does the change follow team conventions, architecture boundaries, and the Definition of Done?       |
 
 ### Common Review Scenarios
 
@@ -581,6 +719,26 @@ Receiving feedback well is just as important as giving it effectively. Here's ho
 - **View reviews as learning opportunities**: Each review teaches you something new
 - **Assume positive intent**: Reviewers are trying to help, not attack
 - **Be grateful**: Someone is taking time to improve your code and help you grow
+- **Stay humble**: Another person may see a risk, simplification, or requirement you missed
+- **Seek to understand**: Clarify the concern before defending the current implementation
+- **Expect different communication styles**: Some reviewers are terse, some are verbose, and some think in questions
+
+### You Are Not Your Code
+
+Code is a temporary solution to a problem, not a measure of your worth. Treat review comments as information about the
+solution, not as a verdict on you as an engineer.
+
+The opposite trap is the IKEA effect: because we built something ourselves, we often value it more than an outsider
+would. This can make reasonable feedback feel more threatening than it is. When you notice that reaction, slow down and
+ask what the reviewer is seeing that you are not seeing yet.
+
+Good receivers make reviews easier by:
+
+- **Thanking reviewers** for spending attention on the change.
+- **Admitting mistakes quickly** when the feedback is correct.
+- **Asking for examples** when feedback is vague.
+- **Explaining constraints** when the reviewer lacks context.
+- **Sharing knowledge back** when the discussion reveals a useful pattern or convention.
 
 ### Responding to Feedback
 
@@ -855,8 +1013,7 @@ Popular tools that integrate with your workflow:
 
 #### Using Claude or ChatGPT for Reviews
 
-````markdown
-Prompt: Review this code for security, performance, and maintainability issues:
+Prompt the assistant with the review dimensions you care about:
 
 ```typescript
 export async function processPayment(orderId: string, amount: number) {
@@ -877,7 +1034,6 @@ export async function processPayment(orderId: string, amount: number) {
   return result;
 }
 ```
-````
 
 **AI Response:**
 
@@ -899,15 +1055,13 @@ export async function processPayment(orderId: string, amount: number) {
 2. Extract payment gateway logic to separate service
 3. Consider using a state machine for order status
 
-````
-
 ### Best Practices for AI-Assisted Reviews
 
 #### 1. Use AI for First-Pass Reviews
 
 Let AI catch obvious issues before human review:
 
-```javascript
+```yaml
 // .github/workflows/ai-review.yml
 name: AI Code Review
 
@@ -924,48 +1078,44 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-````
+```
 
 #### 2. Combine AI with Automated Tools
 
 Create a comprehensive pre-review pipeline:
 
-```yaml
-# Automated checks before human review
-- Linting (ESLint, Prettier)
-- Static analysis (SonarQube)
-- Security scanning (Snyk, CodeQL)
-- AI review (CodeRabbit, GPT-4)
-- Unit tests pass
-- Coverage threshold met
-# Only then: Request human review
-```
+Run these automated checks before requesting human review:
+
+- **Linting and formatting**: ESLint, Prettier, or equivalent project tools.
+- **Static analysis**: SonarQube, CodeQL, or language-specific analyzers.
+- **Security scanning**: Dependency, secret, and vulnerability checks.
+- **AI review**: First-pass comments from tools such as CodeRabbit or an internal reviewer bot.
+- **Test suite**: Unit, integration, and relevant end-to-end tests.
+- **Coverage threshold**: Required coverage or changed-code coverage gates.
+
+Only request human review once the automated checks pass or the remaining failures are explicitly explained in the PR.
 
 #### 3. Train Your Team on AI Feedback
 
 Help developers interpret and act on AI suggestions:
 
-```markdown
-## Understanding AI Review Comments
-
 **When AI says "Consider..."**
 
-- This is a suggestion, not a requirement
-- Evaluate if it applies to your context
-- Feel free to dismiss with justification
+- This is a suggestion, not a requirement.
+- Evaluate if it applies to your context.
+- Feel free to dismiss with justification.
 
 **When AI says "Potential security issue..."**
 
-- Always investigate thoroughly
-- AI can have false positives, but don't ignore
-- Confirm with security best practices
+- Always investigate thoroughly.
+- AI can have false positives, but do not ignore the warning.
+- Confirm with security best practices.
 
 **When AI suggests refactoring:**
 
-- Balance improvement vs. scope creep
-- Consider creating a follow-up task
-- Don't let perfect be the enemy of good
-```
+- Balance improvement vs. scope creep.
+- Consider creating a follow-up task.
+- Do not let perfect be the enemy of good.
 
 #### 4. Review AI Suggestions Critically
 
@@ -1098,6 +1248,49 @@ For best AI review results, see the [Prompt Engineering](/prompt-engineering) ch
 effective code reviews from AI assistants.
 
 :::
+
+## Team Adoption Maturity
+
+Teams do not become excellent at code review by declaring a policy once. Mature review cultures are built through small,
+visible habits that become easier to follow than to skip.
+
+```mermaid
+flowchart LR
+    A[Crawl] --> B[Walk]
+    B --> C[Run]
+
+    A --> A1[Second set of eyes for priority areas]
+    A --> A2[Establish coding standards]
+    A --> A3[Encourage collective ownership]
+
+    B --> B1[Review standards, DRY, and simplicity]
+    B --> B2[Use IDE add-ons and local checks]
+    B --> B3[Set baseline and target code quality]
+
+    C --> C1[Trigger peer reviews through PRs or MRs]
+    C --> C2[Use shared ownership habits]
+    C --> C3[Pair on critical functions]
+    C --> C4[Measure whether quality is improving]
+
+    style A fill:#E1F5FF
+    style B fill:#FFF4E1
+    style C fill:#E6F4EA
+```
+
+### Crawl
+
+Start with the basics: no important change reaches production without another person looking at it. Define a small set
+of coding standards, focus reviews on priority areas, and make shared ownership explicit.
+
+### Walk
+
+Once reviews are routine, raise the quality bar. Use reviews to reinforce standards, simplicity, and duplication
+reduction. Add editor integrations and pre-commit or CI checks so simple violations are caught before review.
+
+### Run
+
+At higher maturity, code review is part of the team's operating system. Pull requests trigger review automatically,
+critical areas use pairing when needed, ownership is shared, and quality metrics show whether the process is improving.
 
 ## Measuring Code Review Effectiveness
 
