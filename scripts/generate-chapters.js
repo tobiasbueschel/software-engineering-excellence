@@ -55,6 +55,6 @@ if (!fs.existsSync(outputDir)) {
 }
 
 // Write to JSON file
-fs.writeFileSync(outputFile, JSON.stringify(chapters, null, 2));
+fs.writeFileSync(outputFile, `${JSON.stringify(chapters, null, 2)}\n`);
 
 console.log(`✅ Generated ${chapters.length} chapters in ${outputFile}`);
