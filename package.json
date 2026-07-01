@@ -41,7 +41,7 @@
     "gray-matter": "^4.0.3",
     "husky": "^8.0.3",
     "lint-staged": "^17.0.6",
-    "prettier": "2.8.7",
+    "prettier": "3.9.4",
     "sharp": "^0.34.5"
   },
   "lint-staged": {
