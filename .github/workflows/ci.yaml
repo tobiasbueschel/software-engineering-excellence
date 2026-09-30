@@ -31,6 +31,9 @@ jobs:
       - name: Static analysis
         run: npm run lint
 
+      - name: Verify selected handbook examples
+        run: npm run test:examples
+
       - name: Check spelling
         run: npm run spell:check
   pr_title:

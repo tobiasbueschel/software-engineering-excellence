@@ -1,4 +1,4 @@
-const githubRepoUrl = 'https://github.com/software-engineering-excellence/handbook';
+const githubRepoUrl = 'https://github.com/tobiasbueschel/software-engineering-excellence';
 const title = 'Software Engineering Excellence';
 const siteUrl = 'https://software-engineering-excellence.vercel.app';
 
@@ -9,8 +9,8 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   favicon: 'img/favicon.ico',
-  organizationName: 'software-engineering-excellence',
-  projectName: 'handbook',
+  organizationName: 'tobiasbueschel',
+  projectName: 'software-engineering-excellence',
   staticDirectories: ['static', 'docs/images'],
   markdown: {
     mermaid: true,
@@ -205,7 +205,7 @@ module.exports = {
           showLastUpdateTime: true,
           showLastUpdateAuthor: false,
           breadcrumbs: false,
-          editUrl: `${githubRepoUrl}/edit/main/website/`,
+          editUrl: `${githubRepoUrl}/edit/main/`,
           sidebarPath: require.resolve('./sidebars.js'),
         },
         sitemap: {

@@ -1118,36 +1118,39 @@ graph TD
     style D fill:#90EE90
 ```
 
+Measure outcomes against your team's baseline. Results depend on task complexity, pairing experience, team size, and how
+work is assigned; the tables below do not promise a particular improvement.
+
 ### Quality Metrics
 
-| Metric                   | How to Measure                           | Expected Improvement |
-| ------------------------ | ---------------------------------------- | -------------------- |
-| **Defect Rate**          | Bugs per 1000 lines of code              | 15-30% reduction     |
-| **Production Bugs**      | Critical issues in production per sprint | 20-40% reduction     |
-| **Code Review Findings** | Issues found during code review          | 40-60% reduction     |
-| **Test Coverage**        | Percentage of code covered by tests      | 10-20% increase      |
+| Metric                   | How to Measure                           | What to Evaluate              |
+| ------------------------ | ---------------------------------------- | ----------------------------- |
+| **Defect Rate**          | Bugs per 1000 lines of code              | Compare with a local baseline |
+| **Production Bugs**      | Critical issues in production per sprint | Compare with a local baseline |
+| **Code Review Findings** | Issues found during code review          | Compare with a local baseline |
+| **Test Coverage**        | Percentage of code covered by tests      | Compare with a local baseline |
 
 ### Efficiency Metrics
 
-| Metric                | How to Measure                       | Expected Improvement |
-| --------------------- | ------------------------------------ | -------------------- |
-| **Cycle Time**        | Story start to production deployment | 10-20% reduction     |
-| **Time to Fix Bugs**  | Hours spent debugging                | 30-50% reduction     |
-| **Code Review Time**  | Time spent in code review process    | 50-70% reduction     |
-| **Rework Percentage** | Code that needs to be rewritten      | 25-35% reduction     |
+| Metric                | How to Measure                       | What to Evaluate              |
+| --------------------- | ------------------------------------ | ----------------------------- |
+| **Cycle Time**        | Story start to production deployment | Compare with a local baseline |
+| **Time to Fix Bugs**  | Hours spent debugging                | Compare with a local baseline |
+| **Code Review Time**  | Time spent in code review process    | Compare with a local baseline |
+| **Rework Percentage** | Code that needs to be rewritten      | Compare with a local baseline |
 
 ### Team Health Metrics
 
-| Metric                     | How to Measure                             | Expected Improvement |
-| -------------------------- | ------------------------------------------ | -------------------- |
-| **Knowledge Distribution** | Team members who can work on critical code | 50-100% increase     |
-| **Onboarding Time**        | Days until new hire is productive          | 30-40% reduction     |
-| **Team Satisfaction**      | Quarterly team surveys                     | 15-25% increase      |
-| **Turnover Rate**          | Developers leaving the team                | 10-20% reduction     |
+| Metric                     | How to Measure                             | What to Evaluate              |
+| -------------------------- | ------------------------------------------ | ----------------------------- |
+| **Knowledge Distribution** | Team members who can work on critical code | Compare with a local baseline |
+| **Onboarding Time**        | Days until new hire is productive          | Compare with a local baseline |
+| **Team Satisfaction**      | Quarterly team surveys                     | Compare with a local baseline |
+| **Turnover Rate**          | Developers leaving the team                | Compare with a local baseline |
 
-### Real-World Example
+### Illustrative Example
 
-**Case Study: E-commerce Startup**
+**Hypothetical scenario: E-commerce startup**
 
 ```
 Before Pair Programming (6 months):
@@ -1162,8 +1165,8 @@ After Pair Programming (6 months):
 - Code review: 1 hour per PR (-75%)
 - 7 developers could work on checkout code (+133%)
 
-ROI: Despite 20% reduction in individual velocity, overall team
-productivity increased 25% due to reduced rework and faster reviews.
+These hypothetical measurements show what a team might track. They do not
+establish causation or a general return on investment for pair programming.
 ```
 
 ### How to Track These Metrics

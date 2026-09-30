@@ -144,6 +144,8 @@ Availability = (Total Time - Downtime) / Total Time × 100%
 | 99.99% (4 nines)  | 52.56 minutes     | 4.32 minutes       | 1.01 minutes      |
 | 99.999% (5 nines) | 5.26 minutes      | 25.9 seconds       | 6.05 seconds      |
 
+Downtime values assume a 365-day year, a 30-day month, and a seven-day week; actual calendar windows vary.
+
 ### The Reliability Stack
 
 ```mermaid
@@ -759,7 +761,9 @@ app.get('/health/ready', async (req, res) => {
 
 ### 4. Retry with Exponential Backoff
 
-Handle transient failures with intelligent retry logic:
+Retry only transient failures and operations that are safe to repeat. Respect `Retry-After` for throttling, cap total
+elapsed time, and use idempotency keys for side effects. The simplified helper below applies backoff but does not parse
+`Retry-After` or enforce an overall deadline:
 
 ```javascript
 // Retry utility with exponential backoff and jitter
@@ -774,8 +778,13 @@ async function retryWithBackoff(fn, options = {}) {
     } catch (error) {
       lastError = error;
 
-      // Don't retry if it's a client error (4xx)
-      if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+      // Most client errors are permanent; 408 and 429 can be retryable.
+      if (
+        error.statusCode &&
+        error.statusCode >= 400 &&
+        error.statusCode < 500 &&
+        ![408, 429].includes(error.statusCode)
+      ) {
         throw error;
       }
 

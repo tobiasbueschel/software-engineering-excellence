@@ -486,22 +486,24 @@ backend:
 name: Deploy Preview
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
   deploy-preview:
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    environment: preview
     permissions:
       pull-requests: write
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -512,20 +514,18 @@ jobs:
           export PATH_PREFIX=preview/${{ github.event.number }}
           npm run build -- --prefix-paths
         env:
-          NODE_ENV: preview
+          NODE_ENV: production
+          APP_ENV: preview
           REACT_APP_API_URL: https://api-preview.example.com
 
       - name: Deploy to S3
-        uses: jakejarvis/s3-sync-action@master
-        with:
-          args: --delete --cache-control max-age=3600
+        run: aws s3 sync build/ "s3://$AWS_PREVIEW_BUCKET/preview/$PR_NUMBER/" --delete --cache-control max-age=3600
         env:
-          AWS_S3_BUCKET: ${{ secrets.AWS_PREVIEW_BUCKET }}
+          AWS_PREVIEW_BUCKET: ${{ secrets.AWS_PREVIEW_BUCKET }}
+          PR_NUMBER: ${{ github.event.number }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
-          SOURCE_DIR: build
-          DEST_DIR: preview/${{ github.event.number }}
+          AWS_DEFAULT_REGION: us-east-1
 
       - name: Invalidate CloudFront cache
         run: |
@@ -538,7 +538,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
 
       - name: Comment PR with preview URL
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const prNumber = context.issue.number;
@@ -553,7 +553,11 @@ jobs:
 
   cleanup-preview:
     runs-on: ubuntu-latest
-    if: github.event.action == 'closed'
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    environment: preview
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Delete S3 preview
@@ -566,7 +570,7 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
 
       - name: Comment cleanup
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             github.rest.issues.createComment({
@@ -576,6 +580,11 @@ jobs:
               body: '🧹 Preview environment cleaned up.'
             });
 ```
+
+This template assumes a Gatsby build whose `gatsby-config` reads `PATH_PREFIX`, a configured AWS CLI, and a protected
+`preview` environment with scoped credentials and approval rules. Adapt build paths for your framework. Fork PRs do not
+receive deployment secrets; do not switch to `pull_request_target` and execute untrusted PR code to bypass this. For
+production use, prefer short-lived OIDC credentials and pin actions to verified commit SHAs.
 
 **Additional considerations:**
 
@@ -595,7 +604,7 @@ A comprehensive testing strategy for previews balances automation speed with man
 | **E2E Smoke**          | Critical paths work           | Login, key user flows, happy paths                        | Playwright, Cypress, Puppeteer              | On preview URL     |
 | **Visual Regression**  | No unintended UI changes      | Screenshot comparison, visual diffs                       | Chromatic, Percy, Applitools                | On preview URL     |
 | **Accessibility**      | WCAG compliance               | Automated a11y scans, keyboard navigation, screen readers | axe-core, Pa11y, Lighthouse                 | On preview URL     |
-| **Performance**        | Meet budgets                  | LCP, FID, CLS, TTI, bundle size                           | Lighthouse CI, WebPageTest, Bundle Analyzer | On preview URL     |
+| **Performance**        | Meet budgets                  | LCP, INP, CLS, lab TBT, bundle size                       | Lighthouse CI, WebPageTest, Bundle Analyzer | On preview URL     |
 | **Security**           | No vulnerabilities introduced | Dependency scans, SAST, basic penetration tests           | Snyk, npm audit, OWASP ZAP                  | Before/after build |
 | **Exploratory**        | Fit, finish, edge cases       | Persona walkthroughs, boundary testing, error states      | Session-based test charters                 | Manual on preview  |
 | **Acceptance**         | Meets requirements            | User story verification, acceptance criteria validation   | Product owner review                        | Manual on preview  |
@@ -707,25 +716,25 @@ test.describe('Performance Checks', () => {
 
 ### GitHub Actions Integration for Tests
 
+Add this job to the preceding Deploy Preview workflow's `jobs` mapping, where `deploy-preview` is defined. It runs only
+when that deployment succeeds. Configure the Playwright reporter to create the uploaded report.
+
 ```yaml
-name: E2E Tests on Preview
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     needs: deploy-preview # Wait for preview deployment
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install dependencies
         run: npm ci
@@ -746,7 +755,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: playwright-report
           path: playwright-report/
@@ -754,7 +763,7 @@ jobs:
 
       - name: Comment test results
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -1074,7 +1083,11 @@ graph TD
 
 ### Automated Cost Controls
 
-**GitHub Actions example:**
+**GitHub Actions fragment:**
+
+Combine this eligibility check with your deployment workflow. Configure a protected preview environment and scoped AWS
+credentials, and replace the omitted deployment steps. The concurrent-preview count is an advisory check; concurrent
+workflow runs can race unless you reserve capacity atomically.
 
 ```yaml
 name: Deploy Preview with Cost Controls
@@ -1085,12 +1098,19 @@ on:
 
 jobs:
   check-preview-eligibility:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    environment: preview
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_PREVIEW_BUCKET: ${{ secrets.AWS_PREVIEW_BUCKET }}
     outputs:
       should_deploy: ${{ steps.check.outputs.should_deploy }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -1098,17 +1118,20 @@ jobs:
         id: check
         run: |
           # Skip preview for docs-only changes
-          CHANGED_FILES=$(git diff --name-only HEAD~1)
+          CHANGED_FILES=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
           if echo "$CHANGED_FILES" | grep -qvE '^docs/|^README\.md|\.md$'; then
             echo "should_deploy=true" >> $GITHUB_OUTPUT
           else
             echo "should_deploy=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
       - name: Check concurrent preview limit
         if: steps.check.outputs.should_deploy == 'true'
         run: |
-          ACTIVE_PREVIEWS=$(aws s3 ls s3://${{ secrets.AWS_PREVIEW_BUCKET }}/preview/ | wc -l)
+          ACTIVE_PREVIEWS=$(aws s3 ls "s3://$AWS_PREVIEW_BUCKET/preview/" | wc -l)
           MAX_PREVIEWS=10
 
           if [ "$ACTIVE_PREVIEWS" -ge "$MAX_PREVIEWS" ]; then
@@ -1123,46 +1146,32 @@ jobs:
     # ... deployment steps ...
 ```
 
-**Automatic cleanup of stale previews:**
+**Scheduled cleanup of stale previews:**
 
-```yaml
-name: Cleanup Stale Previews
+Use the PR's closed state or a preview lease expiry to select stale environment prefixes. Individual objects'
+modification times do not reliably indicate whether a preview is still active; deleting older assets can break an active
+preview. The earlier `cleanup-preview` job handles closed PRs. A scheduled reconciliation can catch missed closure
+events by comparing deployed preview IDs with current PR state, then deleting only prefixes confirmed inactive.
 
-on:
-  schedule:
-    - cron: '0 2 * * *' # Daily at 2 AM UTC
+Inspect a selected prefix before enabling deletion in the scheduled job:
 
-jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Find and remove stale previews
-        run: |
-          # Find previews older than 7 days
-          CUTOFF_DATE=$(date -d '7 days ago' +%s)
-
-          aws s3api list-objects-v2 \
-            --bucket ${{ secrets.AWS_PREVIEW_BUCKET }} \
-            --prefix preview/ \
-            --query 'Contents[?LastModified<`'"$(date -d "@$CUTOFF_DATE" --iso-8601)"'`].[Key]' \
-            --output text | while read key; do
-              echo "Deleting stale preview: $key"
-              aws s3 rm "s3://${{ secrets.AWS_PREVIEW_BUCKET }}/$key" --recursive
-            done
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
+```bash
+# Set these from trusted deployment metadata after confirming the preview is inactive.
+AWS_PREVIEW_BUCKET=my-preview-bucket
+PREVIEW_PREFIX=preview/123/
+aws s3 ls "s3://$AWS_PREVIEW_BUCKET/$PREVIEW_PREFIX" --recursive
+aws s3 rm "s3://$AWS_PREVIEW_BUCKET/$PREVIEW_PREFIX" --recursive --dryrun
 ```
+
+Use narrowly scoped credentials, paginate both inventories, and keep deletion idempotent. After validation, the cleanup
+job can run the same removal command without `--dryrun`.
 
 ### Indirect Savings
 
 **Faster defect detection:**
 
-- Bugs found in branch: **1x cost** to fix
-- Bugs found in staging: **10x cost** (context switching, coordination)
-- Bugs found in production: **100x cost** (customer impact, hotfixes, reputation)
+Defects found earlier can avoid later coordination, emergency releases, and customer impact. The size of that saving
+depends on the defect and workflow; measure it rather than assuming fixed cost multipliers.
 
 **Reduced environment contention:**
 
@@ -1220,7 +1229,7 @@ Your preview environment should mirror production as closely as practical:
 ```json
 {
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   }
 }
 ```
@@ -1237,16 +1246,16 @@ npm run build
 
 ✅ **Same environment configuration (with test variants)**
 
-```javascript
-// Production
-{
-  "STRIPE_KEY": "pk_live_..."
-}
+Production configuration:
 
-// Preview (test mode)
-{
-  "STRIPE_KEY": "pk_test_..."
-}
+```json
+{ "STRIPE_KEY": "pk_live_..." }
+```
+
+Preview configuration (test mode):
+
+```json
+{ "STRIPE_KEY": "pk_test_..." }
 ```
 
 ✅ **Representative data**
@@ -1270,7 +1279,7 @@ Speed is essential for effective Branch-Based Testing:
 
 ```yaml
 # Cache dependencies
-- uses: actions/cache@v3
+- uses: actions/cache@v6.1.0
   with:
     path: ~/.npm
     key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -1453,7 +1462,7 @@ test('user uploads avatar', async ({ page }) => {
 ```yaml
 # Incremental builds
 - name: Cache Next.js build
-  uses: actions/cache@v3
+  uses: actions/cache@v6.1.0
   with:
     path: |
       ~/.npm
@@ -1617,7 +1626,7 @@ jobs:
     steps:
       - name: Get open PRs
         id: open_prs
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const { data: prs } = await github.rest.pulls.list({
@@ -1635,7 +1644,7 @@ jobs:
           echo "deployed=$DEPLOYED" >> $GITHUB_OUTPUT
 
       - name: Delete stale previews
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const openPRs = ${{ steps.open_prs.outputs.result }};

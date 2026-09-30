@@ -1160,7 +1160,7 @@ function LiveDashboard() {
 
 **Weaknesses:**
 
-- ❌ **Unidirectional**: Only server → client (client must use REST for requests)
+- ❌ **Unidirectional**: Only server → client (client sends commands through separate HTTP requests)
 - ❌ **Text only**: Binary data requires Base64 encoding
 - ❌ **Browser connection limits**: Limited concurrent connections per domain (6 in most browsers)
 - ❌ **No IE11 support**: Requires polyfill for older browsers
@@ -1297,37 +1297,21 @@ app.get('/api/updates', async (req, res) => {
 
 ### When polling makes sense
 
-✅ **Use polling ONLY when:**
+Polling is a reasonable choice for infrequent changes, simple infrastructure, constrained clients, and workflows where
+bounded update latency is acceptable. WebSocket or SSE can suit frequent updates, but persistent connections also have
+operational, connection-capacity, and mobile power costs. Choose using measured workload and latency needs.
 
-- WebSocket/SSE are **blocked by firewalls/proxies** and you have no control
-- Infrastructure **doesn't support persistent connections**
-- Updates are **infrequent** (>30 seconds between checks)
-- Building a **quick prototype** before implementing real-time properly
-- **Legacy clients** that can't use modern protocols
-- **Simplicity is critical** and real-time isn't (rare)
+### Polling tradeoffs
 
-❌ **Don't use polling for:**
+| Concern         | What to evaluate                                   | Possible mitigation                       |
+| --------------- | -------------------------------------------------- | ----------------------------------------- |
+| Empty responses | How often data changes relative to polling         | Conditional requests and backoff          |
+| Server load     | Client count multiplied by polling frequency       | Jitter, caching, batching, or push        |
+| Latency         | Polling interval plus processing and network time  | A shorter interval or push                |
+| Mobile power    | Radio wakeups and connection behavior              | Measure on target devices; batch requests |
+| Scalability     | Peak concurrent requests and infrastructure limits | Stagger polls and set quotas              |
 
-- Frequent updates (&lt;10 seconds) - use WebSocket/SSE instead
-- Real-time user experiences - users will notice the lag
-- High user count - server load becomes unmanageable
-- Mobile apps - battery drain is significant
-- Any scenario where WebSocket/SSE work - they're always better
-
-### Why polling is problematic
-
-| Problem               | Impact                                            | Better Alternative           |
-| --------------------- | ------------------------------------------------- | ---------------------------- |
-| **Wasted requests**   | 90%+ of polls return "no changes"                 | WebSocket/SSE (server push)  |
-| **Server load**       | N clients × 1 req/5sec = massive unnecessary load | WebSocket/SSE (1 connection) |
-| **Latency**           | 5-second polling = up to 5-second delay           | WebSocket/SSE (instant)      |
-| **Battery drain**     | Constant network requests on mobile               | WebSocket/SSE (persistent)   |
-| **Scalability**       | Doesn't scale; overwhelms servers                 | Webhooks (server-controlled) |
-| **Network bandwidth** | Repeated HTTP overhead                            | WebSocket (low overhead)     |
-
-### Polling best practices (if you must)
-
-If you're forced to use polling despite its drawbacks:
+### Polling best practices
 
 1. **Use exponential backoff**: Increase interval if no changes detected
 
@@ -1621,33 +1605,40 @@ const express = require('express');
 const crypto = require('crypto');
 
 const app = express();
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buffer) => {
+      req.rawBody = Buffer.from(buffer);
+    },
+  }),
+);
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
 // Verify webhook signature
-function verifySignature(payload, signature) {
-  const expectedSignature = crypto.createHmac('sha256', WEBHOOK_SECRET).update(JSON.stringify(payload)).digest('hex');
-
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+function verifySignature(rawBody, signature) {
+  if (!Buffer.isBuffer(rawBody) || typeof signature !== 'string' || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest();
+  const received = Buffer.from(signature, 'hex');
+  return received.length === expected.length && crypto.timingSafeEqual(received, expected);
 }
 
 // Receive webhook
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
   const signature = req.headers['x-webhook-signature'];
-  const event = req.headers['x-webhook-event'];
+  const event = req.body.event; // Use the signed payload, not an unsigned header.
 
   // Verify signature
-  if (!signature || !verifySignature(req.body, signature)) {
+  if (!signature || !verifySignature(req.rawBody, signature)) {
     console.error('Invalid webhook signature');
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
   // Process event
   try {
-    handleWebhookEvent(event, req.body);
+    await handleWebhookEvent(event, req.body);
 
-    // Acknowledge receipt immediately
+    // Acknowledge after processing succeeds.
     res.status(200).json({ received: true });
   } catch (error) {
     console.error('Webhook processing error:', error);
@@ -1656,18 +1647,18 @@ app.post('/webhook', (req, res) => {
   }
 });
 
-function handleWebhookEvent(event, payload) {
+async function handleWebhookEvent(event, payload) {
   console.log(`Processing event: ${event}`, payload);
 
   switch (event) {
     case 'payment.completed':
       // Process payment completion
-      processPayment(payload.data);
+      await processPayment(payload.data);
       break;
 
     case 'order.shipped':
       // Send shipping notification
-      notifyCustomer(payload.data);
+      await notifyCustomer(payload.data);
       break;
 
     default:
@@ -1680,23 +1671,27 @@ function handleWebhookEvent(event, payload) {
 
 ```typescript
 import { Router } from 'express';
-import { Queue } from 'bull';
+import Queue from 'bull';
+const router = Router();
 
 const webhookQueue = new Queue('webhooks', process.env.REDIS_URL);
 
 // Webhook receiver - responds quickly, processes async
 router.post('/webhook', async (req, res) => {
   // Verify signature (same as above)
-  if (!verifySignature(req.body, req.headers['x-webhook-signature'])) {
+  if (!verifySignature(req.rawBody, req.headers['x-webhook-signature'])) {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
   // Queue for processing (don't block webhook response)
-  await webhookQueue.add({
-    event: req.headers['x-webhook-event'],
-    payload: req.body,
-    receivedAt: new Date(),
-  });
+  await webhookQueue.add(
+    {
+      event: req.body.event,
+      payload: req.body,
+      receivedAt: new Date(),
+    },
+    { attempts: 5, backoff: { type: 'exponential', delay: 1000 } },
+  );
 
   // Respond immediately
   res.status(200).json({ received: true });
@@ -1715,6 +1710,11 @@ webhookQueue.process(async (job) => {
 });
 ```
 
+These receiver examples assume a high-entropy configured secret and the exact signing format agreed with the sender.
+Configure the same raw-body capture for the router example. Before production use, include a signed timestamp and unique
+event ID, enforce an acceptance window, and deduplicate durably. Make side effects idempotent: queue retries and
+acknowledgement failures can both deliver an event more than once. Acknowledge only after durable acceptance.
+
 ### Webhook strengths & weaknesses
 
 **Strengths:**
@@ -1722,13 +1722,13 @@ webhookQueue.process(async (job) => {
 - ✅ **Decoupled**: No persistent connection required
 - ✅ **Scalable**: Provider controls delivery rate
 - ✅ **Universal**: Works with any HTTP-capable system
-- ✅ **Reliable**: Retry logic ensures delivery
+- ✅ **Retry support**: Retries improve delivery probability; they do not guarantee delivery
 - ✅ **Simple**: Standard HTTP POST requests
 - ✅ **Asynchronous**: Consumer can process at their own pace
 
 **Weaknesses:**
 
-- ❌ **Requires public endpoint**: Consumer must be reachable from internet
+- ❌ **Requires a reachable endpoint**: The sender must be able to reach the consumer, over a public or private network
 - ❌ **Security complexity**: Must verify signatures, handle replay attacks
 - ❌ **Delivery not guaranteed**: Even with retries, can fail
 - ❌ **Order not guaranteed**: Events may arrive out of order

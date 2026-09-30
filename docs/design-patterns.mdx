@@ -678,7 +678,7 @@ class Query {
       query += ` ORDER BY ${this.orderBy}`;
     }
 
-    if (this.limit) {
+    if (this.limit !== null) {
       query += ` LIMIT ${this.limit}`;
     }
 
@@ -691,8 +691,8 @@ class QueryBuilder {
     this.table = '';
     this.fields = ['*'];
     this.conditions = [];
-    this.orderBy = null;
-    this.limit = null;
+    this.orderByClause = null;
+    this.rowLimit = null;
   }
 
   from(table) {
@@ -711,12 +711,12 @@ class QueryBuilder {
   }
 
   orderBy(field, direction = 'ASC') {
-    this.orderBy = `${field} ${direction}`;
+    this.orderByClause = `${field} ${direction}`;
     return this;
   }
 
   limit(count) {
-    this.limit = count;
+    this.rowLimit = count;
     return this;
   }
 
@@ -724,7 +724,7 @@ class QueryBuilder {
     if (!this.table) {
       throw new Error('Table name is required');
     }
-    return new Query(this.table, this.fields, this.conditions, this.orderBy, this.limit);
+    return new Query(this.table, this.fields, this.conditions, this.orderByClause, this.rowLimit);
   }
 }
 
@@ -733,14 +733,18 @@ const query = new QueryBuilder()
   .from('users')
   .select('id', 'name', 'email')
   .where('age > 18')
-  .where('status = "active"')
+  .where("status = 'active'")
   .orderBy('name', 'ASC')
   .limit(10)
   .build();
 
 console.log(query.toString());
-// Output: SELECT id, name, email FROM users WHERE age > 18 AND status = "active" ORDER BY name ASC LIMIT 10
+// Output: SELECT id, name, email FROM users WHERE age > 18 AND status = 'active' ORDER BY name ASC LIMIT 10
 ```
+
+This builder demonstrates object construction with trusted constants only. It is not a SQL security layer: never pass
+user input into these strings. Use a maintained query builder with bound values and allowlisted identifiers for queries
+that include external input.
 
 :::tip Builder Pattern Benefits
 
@@ -3311,7 +3315,7 @@ class UserService {
   getUser(id) {
     // Tight coupling to singleton
     const db = Database.getInstance();
-    return db.query(`SELECT * FROM users WHERE id = ${id}`);
+    return db.query('SELECT * FROM users WHERE id = $1', [id]);
   }
 }
 
@@ -3322,7 +3326,7 @@ class UserService {
   }
 
   getUser(id) {
-    return this.database.query(`SELECT * FROM users WHERE id = ${id}`);
+    return this.database.query('SELECT * FROM users WHERE id = $1', [id]);
   }
 }
 

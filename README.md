@@ -21,7 +21,9 @@ Read it here: https://software-engineering-excellence.vercel.app
 ## Local development
 
 Use Node.js 24 LTS (see `.nvmrc`), then run `npm ci` and `npm start`. Before pushing changes, run `npm run build`,
-`npm run lint`, and `npm run spell:check`.
+`npm run lint`, `npm run spell:check`, and `npm run test:examples`. The example tests cover selected cache, validation,
+signature, alert-window, builder, and subscription behaviors directly from the handbook; they are not an exhaustive
+application test suite.
 
 The dependency overrides in `package.json` select patched releases of `serialize-javascript`, `lodash-es`, and SockJS's
 `uuid` dependency until their upstream packages update their requirements. UUID stays on version 11 because SockJS
@@ -30,7 +32,7 @@ requires CommonJS support.
 ## Contributions
 
 Contributions are more than welcome, but please carefully read the
-[Contribution Guide](https://github.com/software-engineering-excellence/handbook/blob/main/CONTRIBUTING.md).
+[Contribution Guide](https://github.com/tobiasbueschel/software-engineering-excellence/blob/main/CONTRIBUTING.md).
 
 ## Copyright & Licensing
 

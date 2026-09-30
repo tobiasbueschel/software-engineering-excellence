@@ -952,11 +952,12 @@ class CircuitBreaker {
 // Usage
 const breaker = new CircuitBreaker();
 
-try {
-  const result = await breaker.execute(() => externalService.call());
-} catch (error) {
-  // Handle failure or use fallback
-  return fallbackResponse;
+async function callWithFallback() {
+  try {
+    return await breaker.execute(() => externalService.call());
+  } catch (error) {
+    return fallbackResponse;
+  }
 }
 ```
 

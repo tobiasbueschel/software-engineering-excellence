@@ -378,12 +378,14 @@ Can you help me fix the authentication check in the login method?
 Here's the authentication check that's failing:
 
 ```typescript
-if (user && user.password === hashedPassword) {
-  return generateToken(user);
+async function checkLogin(user, candidatePassword) {
+  if (user && user.password === candidatePassword) {
+    return generateToken(user);
+  }
 }
 ```
 
-The password comparison isn't working correctly. We use bcrypt for hashing.
+The password comparison isn't working correctly: user.password stores a bcrypt hash. Show how to verify the candidate password safely, and test both valid and invalid credentials.
 ````
 
 ### Using File Context Effectively

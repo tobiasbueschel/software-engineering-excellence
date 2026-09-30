@@ -184,12 +184,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -199,7 +199,7 @@ jobs:
         run: npm run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: build-artifacts
           path: dist/
@@ -216,12 +216,12 @@ test:
 
   steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7.0.1
 
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v7.0.0
       with:
-        node-version: '18'
+        node-version: '24'
 
     - name: Install dependencies
       run: npm ci
@@ -233,7 +233,7 @@ test:
       run: npm run test:integration
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v7.1.1
 ```
 
 #### 4. Quality Gates
@@ -333,7 +333,7 @@ Ensure builds produce consistent results regardless of when or where they run:
 
 ```dockerfile
 # Good: Pin specific versions
-FROM node:18.17.0-alpine
+FROM node:24-alpine
 
 # Use lock files for deterministic dependencies
 COPY package-lock.json .
@@ -492,7 +492,9 @@ module.exports = {
 
 **Migration best practices:**
 
-- Always write reversible migrations (up and down)
+- Prefer compatible expand-and-contract migrations so old and new application versions can run together
+- Document recovery for destructive changes; a down migration cannot necessarily restore deleted data. Use backups,
+  tested restoration, and forward fixes when rollback would lose data
 - Test migrations on production-like data
 - Run migrations before deploying application code
 - Monitor migration performance
@@ -646,16 +648,16 @@ function deploy(version) {
 }
 
 // Good: Keep previous version for quick rollback
-function deploy(version) {
+async function deploy(version) {
   const previousVersion = getCurrentVersion();
 
   try {
-    deployNewVersion(version);
+    await deployNewVersion(version);
     await verifyHealthChecks();
     markAsStable(version);
   } catch (error) {
     console.error('Deployment failed, rolling back');
-    rollbackToVersion(previousVersion);
+    await rollbackToVersion(previousVersion);
     throw error;
   }
 }
@@ -669,17 +671,26 @@ security:
   runs-on: ubuntu-latest
   steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7.0.1
 
     - name: Run dependency vulnerability scan
       run: npm audit --audit-level=moderate
 
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: javascript-typescript
+
     - name: Run SAST scanner
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v4
 
     - name: Scan Docker images
-      run: docker scan myapp:latest
+      run: docker scout cves --exit-code --only-severity critical,high myapp:latest
 ```
+
+This security job is a fragment: install dependencies before auditing, configure `security-events: write` for CodeQL
+uploads, and build the image before scanning. Docker Scout requires its CLI and registry authentication. Pin production
+workflow actions to verified commit SHAs and use an update service to maintain them.
 
 ### 6. Not Version Controlling Pipeline Configuration
 
@@ -744,7 +755,8 @@ const changeFailureRate = (failedDeployments / totalDeployments) * 100;
 
 ## Real-World CI/CD Pipeline Example
 
-Here's a complete GitHub Actions workflow for a Node.js application:
+This template assumes a Node.js application with the referenced scripts, a Dockerfile, configured secrets, and protected
+deployment environments. Replace the placeholder deployment steps before using it:
 
 ```yaml
 name: Complete CI/CD Pipeline
@@ -756,7 +768,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '24'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -765,10 +777,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -790,10 +802,10 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -805,7 +817,7 @@ jobs:
         run: npm test -- --coverage
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: ./coverage/coverage-final.json
 
@@ -821,10 +833,10 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
@@ -847,28 +859,29 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Run dependency audit
         run: npm audit --audit-level=moderate
 
       - name: Run Snyk security scan
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@b075801f26076be9bb50521154cafab73f44da0c
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   # Stage 5: Build Docker image
   build:
+    if: github.event_name == 'push'
     needs: [test, integration-test, security]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -876,12 +889,12 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           push: true
@@ -891,7 +904,7 @@ jobs:
   # Stage 6: Deploy to staging
   deploy-staging:
     needs: build
-    if: github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment:
       name: staging
@@ -909,7 +922,7 @@ jobs:
   # Stage 7: Deploy to production
   deploy-production:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: production

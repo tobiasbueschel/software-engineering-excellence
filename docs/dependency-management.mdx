@@ -112,12 +112,12 @@ MAJOR.MINOR.PATCH
 ```json
 {
   "dependencies": {
-    "exact": "1.2.3", // Exact version only
-    "patch": "~1.2.3", // 1.2.x (patch updates only)
-    "minor": "^1.2.3", // 1.x.x (minor and patch updates)
-    "major": "*", // Any version (avoid!)
-    "range": ">=1.2.0 <2.0.0", // Version range
-    "latest": "latest" // Latest version (avoid!)
+    "exact": "1.2.3",
+    "patch": "~1.2.3",
+    "minor": "^1.2.3",
+    "major": "*",
+    "range": ">=1.2.0 <2.0.0",
+    "latest": "latest"
   }
 }
 ```
@@ -146,22 +146,26 @@ graph LR
 
 **Best practices**:
 
+Good: Predictable updates:
+
 ```json
-// Good: Predictable updates
 {
   "dependencies": {
-    "express": "^4.18.0",         // Allows 4.x updates
-    "lodash": "~4.17.21",          // Allows 4.17.x updates
-    "critical-lib": "2.5.1"        // Locked to specific version
+    "express": "^4.18.0",
+    "lodash": "~4.17.21",
+    "critical-lib": "2.5.1"
   }
 }
+```
 
-// Bad: Unpredictable updates
+Bad: Unpredictable updates:
+
+```json
 {
   "dependencies": {
-    "express": "*",                // Any version - dangerous!
-    "lodash": "latest",            // Non-deterministic
-    "critical-lib": ">=2.0.0"      // Too permissive
+    "express": "*",
+    "lodash": "latest",
+    "critical-lib": ">=2.0.0"
   }
 }
 ```
@@ -310,7 +314,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Run npm audit
         run: npm audit --audit-level=moderate
@@ -323,7 +327,7 @@ jobs:
           args: --severity-threshold=high
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -331,7 +335,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
 ```
@@ -362,7 +366,7 @@ indicates ongoing security ✅ **Check license compatibility**: Ensure license m
 
 ```javascript
 // Check package before installing
-const package = 'suspicious-package';
+const packageName = 'suspicious-package';
 
 // 1. View package info
 // npm info suspicious-package
@@ -378,25 +382,25 @@ const package = 'suspicious-package';
 
 Lock critical dependencies to specific versions.
 
+package.json - Pin critical dependencies:
+
 ```json
-// package.json - Pin critical dependencies
 {
   "dependencies": {
-    "express": "4.18.2", // Exact version
-    "critical-auth-lib": "2.5.1", // No automatic updates
-    "utility-lib": "^1.2.0" // Allow minor updates
+    "express": "4.18.2",
+    "critical-auth-lib": "2.5.1",
+    "utility-lib": "^1.2.0"
   },
   "overrides": {
-    // Force specific version of transitive dependency
     "minimist": "1.2.6"
   }
 }
 ```
 
-```python
+```text
 # requirements.txt - Pin Python dependencies
-express==4.18.2        # Exact version
-django>=4.0,<5.0       # Range
+flask==3.1.0          # Exact version (illustrates syntax, not a current recommendation)
+django>=5.2,<6.0       # Range
 requests~=2.28.0       # Compatible release (2.28.x)
 ```
 
@@ -406,6 +410,11 @@ gem 'rails', '7.0.4'              # Exact version
 gem 'pg', '~> 1.4.0'              # Pessimistic operator
 gem 'sidekiq', '>= 7.0', '< 8.0' # Range
 ```
+
+Version numbers in these package-file examples illustrate constraint syntax. They are not an audited dependency set or a
+recommendation to install old releases. Check the registry and supported release lines, then commit a lockfile. The
+caret also has special rules below 1.0: `^0.2.3` allows versions below `0.3.0`, while `^0.0.3` allows versions below
+`0.0.4`.
 
 ### 4. License Compliance
 
@@ -500,8 +509,9 @@ legacy-peer-deps=false    # Strict peer dependency resolution
 
 **Workspace monorepos**:
 
+package.json (root):
+
 ```json
-// package.json (root)
 {
   "name": "my-monorepo",
   "private": true,
@@ -518,7 +528,7 @@ legacy-peer-deps=false    # Strict peer dependency resolution
 
 **Requirements files**:
 
-```python
+```text
 # requirements.txt - Production dependencies
 Django==4.2.0
 psycopg2-binary==2.9.6
@@ -831,15 +841,13 @@ graph TD
 
 ### NPM Workspaces
 
+Root package.json:
+
 ```json
-// Root package.json
 {
   "name": "my-monorepo",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
+  "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "install:all": "npm install",
     "build:all": "npm run build -ws",
@@ -851,13 +859,16 @@ graph TD
     "typescript": "^5.1.0"
   }
 }
+```
 
-// packages/package-a/package.json
+packages/package-a/package.json:
+
+```json
 {
   "name": "@myorg/package-a",
   "version": "1.0.0",
   "dependencies": {
-    "@myorg/utils": "workspace:*",  // Internal workspace dependency
+    "@myorg/utils": "workspace:*",
     "lodash": "^4.17.21"
   }
 }
@@ -865,8 +876,9 @@ graph TD
 
 ### Lerna
 
+lerna.json:
+
 ```json
-// lerna.json
 {
   "version": "independent",
   "npmClient": "npm",
@@ -886,7 +898,7 @@ graph TD
 
 ```bash
 # Lerna commands
-lerna bootstrap          # Install all dependencies
+npm install             # Install workspace dependencies (legacy bootstrap is removed; use package-manager workspaces)
 lerna run build         # Run build in all packages
 lerna run test          # Run tests in all packages
 lerna publish           # Publish changed packages
@@ -896,25 +908,18 @@ lerna exec -- npm audit # Run command in all packages
 
 ### Nx
 
+nx.json:
+
 ```json
-// nx.json
 {
-  "extends": "@nx/workspace/presets/npm.json",
-  "affected": {
-    "defaultBase": "main"
-  },
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx/tasks-runners/default",
-      "options": {
-        "cacheableOperations": ["build", "test", "lint"],
-        "parallel": 3
-      }
-    }
-  },
+  "defaultBase": "main",
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "cache": true
+    },
+    "test": {
+      "cache": true
     }
   }
 }
@@ -923,8 +928,8 @@ lerna exec -- npm audit # Run command in all packages
 ```bash
 # Nx commands
 nx run-many -t build    # Build all projects
-nx affected:build       # Build only affected projects
-nx affected:test        # Test only affected projects
+nx affected -t build       # Build only affected projects
+nx affected -t test        # Test only affected projects
 nx graph                # Visualize dependency graph
 ```
 
@@ -978,8 +983,9 @@ updates:
 
 ### Renovate
 
+renovate.json:
+
 ```json
-// renovate.json
 {
   "extends": ["config:base"],
   "schedule": ["before 5am on monday"],
@@ -1000,7 +1006,7 @@ updates:
       "automerge": true
     },
     {
-      "matchPackagePatterns": ["^@types/"],
+      "matchPackageNames": ["/^@types//"],
       "automerge": true
     },
     {

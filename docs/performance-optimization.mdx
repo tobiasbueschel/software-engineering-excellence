@@ -955,146 +955,30 @@ class PerformanceMonitor {
 
 ### Real User Monitoring (RUM)
 
+The current Core Web Vitals are LCP, INP, and CLS. INP replaced FID in 2024. Use the maintained `web-vitals` library to
+handle metric lifecycles, back/forward navigation, and CLS session windows correctly:
+
 ```javascript
-// Client-side performance tracking
-class RealUserMonitoring {
-  constructor(apiEndpoint) {
-    this.apiEndpoint = apiEndpoint;
-    this.initializeObservers();
-  }
+import { onCLS, onINP, onLCP } from 'web-vitals';
 
-  initializeObservers() {
-    // Core Web Vitals
-    this.observeLCP(); // Largest Contentful Paint
-    this.observeFID(); // First Input Delay
-    this.observeCLS(); // Cumulative Layout Shift
-
-    // Navigation timing
-    window.addEventListener('load', () => {
-      this.reportNavigationTiming();
-    });
-
-    // Resource timing
-    this.observeResourceTiming();
-  }
-
-  observeLCP() {
-    const observer = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      const lastEntry = entries[entries.length - 1];
-
-      this.reportMetric({
-        name: 'LCP',
-        value: lastEntry.renderTime || lastEntry.loadTime,
-        rating: this.getRating('LCP', lastEntry.renderTime || lastEntry.loadTime),
-      });
-    });
-
-    observer.observe({ entryTypes: ['largest-contentful-paint'] });
-  }
-
-  observeFID() {
-    const observer = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      entries.forEach((entry) => {
-        this.reportMetric({
-          name: 'FID',
-          value: entry.processingStart - entry.startTime,
-          rating: this.getRating('FID', entry.processingStart - entry.startTime),
-        });
-      });
-    });
-
-    observer.observe({ entryTypes: ['first-input'] });
-  }
-
-  observeCLS() {
-    let clsValue = 0;
-    const observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (!entry.hadRecentInput) {
-          clsValue += entry.value;
-        }
-      }
-
-      this.reportMetric({
-        name: 'CLS',
-        value: clsValue,
-        rating: this.getRating('CLS', clsValue),
-      });
-    });
-
-    observer.observe({ entryTypes: ['layout-shift'] });
-  }
-
-  reportNavigationTiming() {
-    const navigation = performance.getEntriesByType('navigation')[0];
-
-    this.reportMetric({
-      name: 'page-load',
-      timings: {
-        dns: navigation.domainLookupEnd - navigation.domainLookupStart,
-        tcp: navigation.connectEnd - navigation.connectStart,
-        ttfb: navigation.responseStart - navigation.requestStart,
-        download: navigation.responseEnd - navigation.responseStart,
-        domInteractive: navigation.domInteractive - navigation.fetchStart,
-        domComplete: navigation.domComplete - navigation.fetchStart,
-        loadComplete: navigation.loadEventEnd - navigation.fetchStart,
-      },
-    });
-  }
-
-  getRating(metric, value) {
-    const thresholds = {
-      LCP: { good: 2500, needsImprovement: 4000 },
-      FID: { good: 100, needsImprovement: 300 },
-      CLS: { good: 0.1, needsImprovement: 0.25 },
-    };
-
-    const threshold = thresholds[metric];
-    if (value <= threshold.good) return 'good';
-    if (value <= threshold.needsImprovement) return 'needs-improvement';
-    return 'poor';
-  }
-
-  reportMetric(metric) {
-    // Send to analytics endpoint
-    navigator.sendBeacon(
-      this.apiEndpoint,
-      JSON.stringify({
-        ...metric,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: Date.now(),
-      }),
-    );
-  }
-
-  observeResourceTiming() {
-    const observer = new PerformanceObserver((list) => {
-      const entries = list.getEntries();
-      entries.forEach((entry) => {
-        if (entry.duration > 1000) {
-          // Report slow resources
-          this.reportMetric({
-            name: 'slow-resource',
-            resource: entry.name,
-            duration: entry.duration,
-            type: entry.initiatorType,
-          });
-        }
-      });
-    });
-
-    observer.observe({ entryTypes: ['resource'] });
+function reportMetric({ id, name, value, rating, delta }) {
+  // Avoid collecting query strings, tokens, or personal data in URLs.
+  const body = JSON.stringify({ id, name, value, rating, delta, path: location.pathname });
+  const payload = new Blob([body], { type: 'application/json' });
+  if (!navigator.sendBeacon?.('/api/metrics', payload)) {
+    fetch('/api/metrics', { method: 'POST', body: payload, keepalive: true }).catch(() => {});
   }
 }
 
-// Initialize RUM
-if (typeof window !== 'undefined') {
-  new RealUserMonitoring('/api/metrics');
-}
+onLCP(reportMetric);
+onINP(reportMetric);
+onCLS(reportMetric);
 ```
+
+Bundle this browser-only example and configure a metrics endpoint with appropriate privacy controls. Evaluate the 75th
+percentile separately for mobile and desktop: good thresholds are LCP at most 2.5 seconds, INP at most 200 ms, and CLS
+at most 0.1. A page-load-only lab test cannot measure INP without user interactions; TBT is a useful lab proxy. See the
+[Web Vitals guidance](https://web.dev/articles/vitals).
 
 ## Performance Testing
 

@@ -46,8 +46,8 @@ Caching addresses several critical challenges in modern software systems:
 
 :::tip Real-World Impact
 
-A well-implemented caching strategy can reduce database queries by 80-95% and improve response times by 10-100x. For
-example, serving data from Redis (sub-millisecond) vs. a database query (10-100ms) can transform user experience.
+Caching can reduce repeated work substantially when requests reuse the same data. Measure hit rate, tail latency,
+network overhead, and freshness for your workload; no fixed improvement applies to every application.
 
 :::
 
@@ -71,7 +71,7 @@ class LocalStorageCache {
     const item = {
       value: value,
       timestamp: Date.now(),
-      ttl: customTtl || this.ttl,
+      ttl: customTtl ?? this.ttl,
     };
     localStorage.setItem(key, JSON.stringify(item));
   }
@@ -173,9 +173,9 @@ import hashlib
 
 # Simple LRU cache decorator
 @lru_cache(maxsize=128)
-def get_user_permissions(user_id):
-    """Cache user permissions in memory"""
-    return database.query(f"SELECT * FROM permissions WHERE user_id = {user_id}")
+def get_product_metadata(product_id):
+    """Cache relatively stable data; database is an application-specific adapter."""
+    return database.query("SELECT * FROM products WHERE id = %s", (product_id,))
 
 # Custom cache implementation with TTL
 class InMemoryCache:
@@ -212,7 +212,7 @@ cache = InMemoryCache()
 
 def get_product_catalog():
     cached = cache.get('product_catalog')
-    if cached:
+    if cached is not None:
         return cached
 
     # Expensive database query
@@ -221,7 +221,10 @@ def get_product_catalog():
     return catalog
 ```
 
-**Best for**: Session data, computed results, frequently accessed objects
+`lru_cache` has no TTL: call `get_product_metadata.cache_clear()` when relevant data changes. Bind SQL parameters using
+your driver's placeholder syntax. Authorization decisions need explicit revocation and freshness guarantees.
+
+**Best for**: Computed results and frequently accessed, relatively stable objects
 
 ### Distributed Caching
 
@@ -230,19 +233,20 @@ Shared cache across multiple application instances:
 ```javascript
 // Redis caching example
 const redis = require('redis');
-const { promisify } = require('util');
 
 class RedisCache {
   constructor(config) {
     this.client = redis.createClient(config);
-    this.getAsync = promisify(this.client.get).bind(this.client);
-    this.setAsync = promisify(this.client.setex).bind(this.client);
-    this.delAsync = promisify(this.client.del).bind(this.client);
+    this.client.on('error', (error) => console.error('Redis connection error:', error));
+  }
+
+  async connect() {
+    await this.client.connect();
   }
 
   async get(key) {
     try {
-      const data = await this.getAsync(key);
+      const data = await this.client.get(key);
       return data ? JSON.parse(data) : null;
     } catch (error) {
       console.error('Cache get error:', error);
@@ -252,7 +256,7 @@ class RedisCache {
 
   async set(key, value, ttlSeconds = 3600) {
     try {
-      await this.setAsync(key, ttlSeconds, JSON.stringify(value));
+      await this.client.set(key, JSON.stringify(value), { EX: ttlSeconds });
       return true;
     } catch (error) {
       console.error('Cache set error:', error);
@@ -262,7 +266,7 @@ class RedisCache {
 
   async delete(key) {
     try {
-      await this.delAsync(key);
+      await this.client.del(key);
       return true;
     } catch (error) {
       console.error('Cache delete error:', error);
@@ -288,7 +292,8 @@ class RedisCache {
 }
 
 // Usage
-const cache = new RedisCache({ host: 'localhost', port: 6379 });
+const cache = new RedisCache({ url: 'redis://localhost:6379' });
+await cache.connect();
 
 async function getUserProfile(userId) {
   return cache.getOrSet(
@@ -538,7 +543,10 @@ class WriteThroughCache {
 }
 ```
 
-**Pros**: Cache always consistent with database, no stale data
+**Pros**: Updates the cache on the write path, reducing stale reads when writes and cache updates are coordinated
+
+Write-through alone does not guarantee consistency. Database commits and cache writes can fail independently, and
+concurrent writers can overwrite newer values. Define ordering, invalidation, and recovery behavior explicitly.
 
 **Cons**: Write latency (two operations), cache may store unread data, cache failure blocks writes
 
@@ -995,7 +1003,7 @@ Track metrics to optimize cache effectiveness:
 ```python
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 @dataclass
 class CacheMetrics:
@@ -1020,7 +1028,7 @@ class MonitoredCache:
         self.cache = cache
         self.metrics = CacheMetrics()
 
-    def get(self, key) -> Optional[any]:
+    def get(self, key) -> Optional[Any]:
         start = time.time()
 
         try:
@@ -1071,91 +1079,42 @@ print(cache.get_stats())
 
 ### 4. Implement Cache Stampede Protection
 
-Prevent multiple processes from regenerating the same cache entry:
+Coalesce concurrent requests within one application process. Remove the pending promise on both success and failure so a
+failed computation does not prevent later retries. This adapter uses `null` to represent a cache miss.
 
 ```javascript
 class StampedeProtectedCache {
-  constructor(cache, lockTimeout = 10000) {
+  constructor(cache) {
     this.cache = cache;
-    this.lockTimeout = lockTimeout;
     this.pendingRequests = new Map();
   }
 
   async getOrCompute(key, computeFn, ttl = 3600) {
-    // Check cache first
-    const cached = await this.cache.get(key);
-    if (cached !== null) {
-      return cached;
+    if (this.pendingRequests.has(key)) return this.pendingRequests.get(key);
+
+    const pending = (async () => {
+      const cached = await this.cache.get(key);
+      if (cached !== null) return cached;
+      const value = await computeFn();
+      await this.cache.set(key, value, ttl);
+      return value;
+    })();
+    this.pendingRequests.set(key, pending);
+
+    try {
+      return await pending;
+    } finally {
+      this.pendingRequests.delete(key);
     }
-
-    const lockKey = `lock:${key}`;
-
-    // Check if this key is already being computed
-    if (this.pendingRequests.has(key)) {
-      // Wait for the ongoing request
-      return await this.pendingRequests.get(key);
-    }
-
-    // Try to acquire lock
-    const acquired = await this.acquireLock(lockKey);
-
-    if (acquired) {
-      try {
-        // Double-check cache after acquiring lock
-        const cached = await this.cache.get(key);
-        if (cached !== null) {
-          return cached;
-        }
-
-        // Create promise for this computation
-        const computePromise = (async () => {
-          const value = await computeFn();
-          await this.cache.set(key, value, ttl);
-          return value;
-        })();
-
-        // Store promise for other waiting requests
-        this.pendingRequests.set(key, computePromise);
-
-        const result = await computePromise;
-
-        // Clean up
-        this.pendingRequests.delete(key);
-
-        return result;
-      } finally {
-        await this.releaseLock(lockKey);
-      }
-    } else {
-      // Lock held by another process - wait and retry
-      await this.sleep(100);
-      return await this.getOrCompute(key, computeFn, ttl);
-    }
-  }
-
-  async acquireLock(lockKey) {
-    const result = await this.cache.set(lockKey, '1', this.lockTimeout / 1000, 'NX');
-    return result === 'OK';
-  }
-
-  async releaseLock(lockKey) {
-    await this.cache.del(lockKey);
-  }
-
-  sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
-
-// Usage
-const cache = new StampedeProtectedCache(redisCache);
-
-// Multiple concurrent requests will only compute once
-const expensiveData = await cache.getOrCompute('heavy:computation', async () => {
-  // Expensive operation
-  return await runComplexQuery();
-});
 ```
+
+Multiple processes require additional coordination. Distributed locks need unique ownership tokens, atomic
+compare-and-delete release, bounded waits, and lease-expiry handling; an unconditional `DEL` can release another
+worker's lock. Critical writes may also require fencing tokens. Follow the
+[Redis distributed-lock guidance](https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/) rather than
+using a cache wrapper as an improvised locking API.
 
 ### 5. Version Your Cache Keys
 
@@ -1198,7 +1157,7 @@ class VersionedCache:
 Leverage cache-specific features:
 
 ```javascript
-// Redis data structure examples
+// Redis data structure examples using ioredis (a different API from node-redis)
 
 // Hash for object storage (more memory efficient)
 await redis.hset('user:123', 'name', 'John Doe');
@@ -1275,11 +1234,13 @@ await cache.set('large-report', hugeDataset, 86400); // 24 hours
 
 // ✅ Good - Appropriate TTLs and size limits
 await cache.set('user:123', userData, 3600); // 1 hour
+```
 
-// ✅ Good - Configure maxmemory policy in Redis
-redis - cli;
-config.set('maxmemory', '2gb');
-config.set('maxmemory-policy', 'allkeys-lru'); // Evict least recently used
+Configure Redis memory limits separately, and persist the policy in the server configuration:
+
+```bash
+redis-cli CONFIG SET maxmemory 2gb
+redis-cli CONFIG SET maxmemory-policy allkeys-lru
 ```
 
 ### 3. Serialization Issues
@@ -1306,12 +1267,14 @@ const cached = JSON.parse(await cache.get('user'));
 // ✅ Good - Proper serialization/deserialization
 class CacheSerializer {
   static serialize(obj) {
-    return JSON.stringify(obj, (key, value) => {
+    return JSON.stringify(obj, function (key, value) {
+      // Date.toJSON runs before the replacer; inspect the original property.
+      const original = this[key];
+      if (original instanceof Date) {
+        return { __type: 'Date', value: original.toISOString() };
+      }
       if (value instanceof Map) {
         return { __type: 'Map', value: Array.from(value.entries()) };
-      }
-      if (value instanceof Date) {
-        return { __type: 'Date', value: value.toISOString() };
       }
       return value;
     });

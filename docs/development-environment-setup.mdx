@@ -720,7 +720,7 @@ volumes:
 **Dockerfile.dev**:
 
 ```dockerfile
-FROM node:18-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -791,8 +791,11 @@ module.exports = {
   devtool: 'source-map',
   // ... other config
 };
+```
 
-// In package.json
+In `package.json` (the environment assignment shown uses a POSIX shell):
+
+```json
 {
   "scripts": {
     "dev": "NODE_OPTIONS='--inspect' npm run start"
@@ -934,7 +937,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        node-version: [22.x, 24.x]
 
     services:
       postgres:
@@ -954,10 +957,10 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -978,7 +981,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: ./coverage/lcov.info
 ```

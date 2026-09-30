@@ -3,7 +3,8 @@ id: feature-flags
 title: Feature Flags
 sidebar_label: Feature Flags
 description: >-
-  The moment you add a feature flag, it becomes a tech debt. Learn when and how to best use them in this chapter.
+  Learn how to manage feature releases and experiments, control operational behavior, and retire temporary flags before
+  they become technical debt.
 keywords:
   - feature flags
   - feature toggles
@@ -45,7 +46,7 @@ issues before they impact the entire user base.
 **3. Greater flexibility:** Feature flags allow for experimentation, such as A/B testing or gradual rollouts, helping to
 validate hypotheses and inform future development.
 
-**4. Simplified rollbacks:** If a problem occurs,feature flags make it easy to disable the affected feature without
+**4. Simplified rollbacks:** If a problem occurs, feature flags make it easy to disable the affected feature without
 rolling back the entire deployment.
 
 ## Types
@@ -56,7 +57,8 @@ There are several types of feature flags, each with its own use case:
 - **Experiment flags:** Facilitate A/B testing and other experiments by controlling which users see specific features.
 - **Operational flags:** Control the behavior of the application under certain conditions, such as high load or during
   maintenance.
-- **Permission flags:** Enable or disable features based on user roles, subscription levels, or other user attributes.
+- **Permission flags:** Control feature visibility by user segment or subscription. Enforce access separately on the
+  server; a client-side flag is not an authorization control.
 
 Now that we have an understanding of what feature flags are and why they're important, let's move on to implementing
 feature flags in the next chapter.
@@ -140,9 +142,9 @@ Here is an example of how such an implementation could look like in React.js
 ```jsx
 import React, { createContext, useContext } from 'react';
 
-const FeatureFlagContext = createContext({});
+const FeatureFlagContext = createContext({ featureFlags: {} });
 
-function FeatureFlagProvider({ children, featureFlags }) {
+function FeatureFlagProvider({ children, featureFlags = {} }) {
   return <FeatureFlagContext.Provider value={{ featureFlags }}>{children}</FeatureFlagContext.Provider>;
 }
 
@@ -158,8 +160,8 @@ export { FeatureFlagProvider, useFeatureFlag };
 
 ```jsx
 import React from 'react';
-import { FeatureFlagProvider } from './featureFlagContext';
-import ContactUsButton from './ContactUsButton';
+import { FeatureFlagProvider } from './FeatureFlagContext';
+import Content from './Content';
 
 const featureFlags = {
   contactUsEnabled: true,
@@ -178,7 +180,7 @@ And now you can use it in **Content.jsx**
 
 ```jsx
 import React from 'react';
-import { useFeatureFlag } from './featureFlagContext';
+import { useFeatureFlag } from './FeatureFlagContext';
 
 export default function Content() {
   const isContactUsEnabled = useFeatureFlag('contactUsEnabled');
@@ -296,7 +298,7 @@ For further reading and resources on feature flags, consider the following books
 - [Continuous Delivery: Reliable Software Releases through Build, Test, and Deployment Automation](https://amzn.to/3KAJgwO)
   by Jez Humble and David Farley
 - [Feature Management with LaunchDarkly: Discover safe ways to make live changes in your systems and master testing in production](https://amzn.to/3nMkeC1)
-  by by Michael Gillett and John Kodumal
+  by Michael Gillett
 
 **Articles**
 

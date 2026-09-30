@@ -197,8 +197,8 @@ graph TB
 **Client errors (4xx)**
 
 - `400 Bad Request` — malformed input
-- `401 Unauthorized` — missing/invalid auth
-- `403 Forbidden` — authenticated but not allowed
+- `401 Unauthorized` - missing/invalid credentials; include a `WWW-Authenticate` challenge
+- `403 Forbidden` - the server refuses the request; credentials may not grant sufficient permission
 - `404 Not Found` — unknown resource
 - `405 Method Not Allowed` — wrong verb
 - `409 Conflict` — version/conflict errors
@@ -303,7 +303,7 @@ sequenceDiagram
     DB-->>API: Results + next cursor
     API-->>Client: Results + nextCursor header/body
 
-    Note over Client,API: Cursor-based pagination<br/>prevents duplicates
+    Note over Client,API: Cursor-based pagination<br/>reduces drift with stable ordering
 ```
 
 **Offset/limit (simple, but brittle at scale)**
@@ -320,7 +320,8 @@ sequenceDiagram
 **General paging guidelines**
 
 - Default page size (e.g., 20–50); cap max (e.g., 100–1000)
-- Stable ordering (e.g., `createdAt DESC, id DESC`) to avoid duplicates/misses
+- Use stable, unique ordering (e.g., `createdAt DESC, id DESC`); mutable sort keys can still cause duplicates or misses.
+  Use a snapshot when traversal must be consistent
 - For list endpoints, support conditional requests (`If-None-Match`) to save bandwidth
 - Consider **Range** iteration or "delta" mechanisms for heavy feeds if needed
 
@@ -336,7 +337,7 @@ graph TB
     B --> B3[Brittle with concurrent writes]
 
     C --> C1[Scale-friendly]
-    C --> C2[Prevents duplicates]
+    C --> C2[Reduces pagination drift]
     C --> C3[Stable iteration]
 
     style C fill:#90EE90
@@ -401,30 +402,31 @@ Content-Type: application/merge-patch+json
 **Idempotency**
 
 - `GET`, `PUT`, `DELETE` should be idempotent by definition
-- For **POST** that creates resources (and payments, retries, mobile flakes), accept an **`Idempotency-Key`** header and
-  cache results on the server by key
+- For retried **POST** operations, accept an **`Idempotency-Key`** header and store a durable result scoped to the
+  authenticated caller and operation. Atomically reserve the key before any side effect, compare a request fingerprint,
+  and define retention and in-progress behavior. A separate cache lookup followed by payment processing is unsafe.
+- Persist the resource mutation and result together when possible. External payment calls need the provider's own
+  idempotency support or a durable recovery workflow; a database transaction cannot roll back an external payment.
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant API
-    participant Cache
+    participant Store as Durable idempotency store
 
-    Client->>API: POST /payments<br/>Idempotency-Key: uuid-123
-    API->>Cache: Check key exists?
-    Cache-->>API: Not found
-    API->>API: Process payment
-    API->>Cache: Store result with key
+    Client->>API: POST /payments with key and payload
+    API->>Store: Atomically reserve caller + operation + key
+    Store-->>API: New reservation
+    API->>API: Process with downstream idempotency support
+    API->>Store: Commit durable result
     API-->>Client: 201 Created
 
-    Note over Client,API: Retry with same key
+    Client->>API: Retry with same key and payload
+    API->>Store: Look up reservation and fingerprint
+    Store-->>API: Completed result
+    API-->>Client: Replay original status and result
 
-    Client->>API: POST /payments<br/>Idempotency-Key: uuid-123
-    API->>Cache: Check key exists?
-    Cache-->>API: Found (201, result)
-    API-->>Client: 201 Created (cached)
-
-    Note over API,Cache: No duplicate payment processed
+    Note over API,Store: Reject changed payloads; handle in-progress requests explicitly
 ```
 
 ---
@@ -458,23 +460,29 @@ graph TB
 
 ### Essential headers
 
-| Header                | Purpose                        | Example                       |
-| --------------------- | ------------------------------ | ----------------------------- |
-| `Content-Type`        | Request body format            | `application/json`            |
-| `Accept`              | Desired response format        | `application/json`            |
-| `Authorization`       | Authentication credentials     | `Bearer eyJhbGc...`           |
-| `Location`            | URI of newly created resource  | `/users/9f0b...`              |
-| `ETag`                | Version identifier for caching | `"W/\"e7c-...\"`              |
-| `If-Match`            | Conditional update             | `"W/\"e7c-...\"`              |
-| `If-None-Match`       | Conditional get                | `"W/\"e7c-...\"`              |
-| `X-Request-ID`        | Tracing identifier             | `req-123-abc`                 |
-| `Retry-After`         | When to retry after rate limit | `120` (seconds) or date       |
-| `Link`                | Pagination links               | `<url>; rel="next"`           |
-| `RateLimit-Limit`     | Rate limit quota               | `1000`                        |
-| `RateLimit-Remaining` | Remaining requests in window   | `999`                         |
-| `RateLimit-Reset`     | When quota resets              | `1704067200` (Unix timestamp) |
+| Header                | Purpose                        | Example                     |
+| --------------------- | ------------------------------ | --------------------------- |
+| `Content-Type`        | Request body format            | `application/json`          |
+| `Accept`              | Desired response format        | `application/json`          |
+| `Authorization`       | Authentication credentials     | `Bearer eyJhbGc...`         |
+| `Location`            | URI of newly created resource  | `/users/9f0b...`            |
+| `ETag`                | Version identifier for caching | `"e7c-..."`                 |
+| `If-Match`            | Conditional update             | `"e7c-..."`                 |
+| `If-None-Match`       | Conditional get                | `"e7c-..."`                 |
+| `X-Request-ID`        | Tracing identifier             | `req-123-abc`               |
+| `Retry-After`         | When to retry after rate limit | `120` (seconds) or date     |
+| `Link`                | Pagination links               | `<url>; rel="next"`         |
+| `RateLimit-Limit`     | Rate limit quota               | `1000`                      |
+| `RateLimit-Remaining` | Remaining requests in window   | `999`                       |
+| `RateLimit-Reset`     | When quota resets              | `120` (seconds until reset) |
 
 ---
+
+`If-Match` uses strong entity tags: a weak validator such as `W/"e7c-..."` cannot protect conditional updates.
+`If-None-Match` supports weak comparison for cache validation. See
+[HTTP conditional requests](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1). The `RateLimit-*` examples below
+use a documented convention with reset expressed as a delay in seconds; header names and semantics vary across
+implementations. Do not assume a reset value is always a Unix timestamp.
 
 ## Rate limiting
 
@@ -515,7 +523,7 @@ Content-Type: application/problem+json
 Retry-After: 120
 RateLimit-Limit: 1000
 RateLimit-Remaining: 0
-RateLimit-Reset: 1704067200
+RateLimit-Reset: 120
 X-Request-ID: req-789
 
 {
@@ -577,18 +585,18 @@ Content-Type: application/json
 ```http
 # Conditional read with caching
 GET /users/9f0b…
-If-None-Match: "W/\"e7c-…\""
+If-None-Match: "e7c-..."
 
 # Response (if not modified)
 HTTP/1.1 304 Not Modified
-ETag: "W/\"e7c-…\""
+ETag: "e7c-..."
 ```
 
 ```http
 # Partial update via JSON Patch
 PATCH /users/9f0b…
 Content-Type: application/json-patch+json
-If-Match: "W/\"e7c-…\""
+If-Match: "e7c-..."
 
 [
   {"op": "replace", "path": "/displayName", "value": "T. B."}
@@ -596,7 +604,7 @@ If-Match: "W/\"e7c-…\""
 
 # Response
 HTTP/1.1 204 No Content
-ETag: "W/\"new-etag\""
+ETag: "new-etag"
 ```
 
 ```http
@@ -683,7 +691,7 @@ graph TB
 - **RFC 9457** — Problem Details for HTTP APIs (`application/problem+json`)
 - **RFC 8288** — Web Linking (Link header for pagination)
 - **RFC 6902** — JSON Patch
-- **RFC 7386** — JSON Merge Patch
+- **RFC 7396** — JSON Merge Patch
 - **RFC 5789** — PATCH Method for HTTP
 - **RFC 3986** — URI Generic Syntax
 

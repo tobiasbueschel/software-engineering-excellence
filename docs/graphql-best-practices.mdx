@@ -633,7 +633,7 @@ graph TB
     D --> D3[Query cost analysis]
 
     E --> E1[Per-client quotas]
-    E --> E2[Persistent queries]
+    E --> E2[Persisted queries]
 
     style A fill:#4A90E2,color:#fff
 ```
@@ -644,13 +644,16 @@ graph TB
 - Attach user to **context**; resolvers access via `context.currentUser`
 
 ```javascript
-// Express + Apollo Server
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  context: ({ req }) => {
-    const user = authenticateUser(req.headers.authorization);
-    return { user, loaders: createLoaders() };
+import { ApolloServer } from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
+
+const server = new ApolloServer({ typeDefs, resolvers });
+await startStandaloneServer(server, {
+  listen: { port: 4000 },
+  context: async ({ req }) => {
+    const user = await authenticateUser(req.headers.authorization);
+    // Create loaders per request and scope their queries to this user's permissions.
+    return { user, db, loaders: createLoaders(user) };
   },
 });
 ```
@@ -661,24 +664,31 @@ const server = new ApolloServer({
 - Use field-level authorization for sensitive data
 
 ```javascript
+import { GraphQLError } from 'graphql';
+
 // Resolver-level auth
 const Query = {
-  user: (parent, { id }, context) => {
+  user: async (parent, { id }, context) => {
     if (!context.user) {
-      throw new AuthenticationError('Not authenticated');
+      throw new GraphQLError('Not authenticated', { extensions: { code: 'UNAUTHENTICATED' } });
     }
 
-    const user = db.users.findById(id);
+    const user = await context.db.users.findById(id);
+    if (!user) return null;
 
     if (user.id !== context.user.id && !context.user.isAdmin) {
-      throw new ForbiddenError('Not authorized');
+      throw new GraphQLError('Not authorized', { extensions: { code: 'FORBIDDEN' } });
     }
 
     return user;
-  }
+  },
 };
+```
 
-// Directive-based auth (schema definition)
+Custom directives need a schema transformer or resolver wrapper that enforces them; SDL alone does not enforce access.
+
+```graphql
+# Directive-based auth (partial schema; define the directive and role enum too)
 type User @auth(requires: ADMIN) {
   id: ID!
   email: String! @auth(requires: USER)
@@ -713,7 +723,7 @@ query Attack {
 - **Query complexity**: Assign costs to fields; reject expensive queries
 - **Timeout**: Kill resolvers that run too long
 - **Rate limiting**: Per-client request quotas
-- **Persistent queries**: Allow only pre-registered queries in production
+- **Persisted queries**: Allow only pre-registered queries in production
 
 ```javascript
 // Apollo Server with complexity plugin
@@ -778,7 +788,8 @@ const typeDefs = gql`
 **Application-level caching**
 
 - Use **Redis** or in-memory cache for expensive computations
-- Cache by query signature (hash of query + variables)
+- Cache by query signature and variables, plus all relevant user, tenant, and permission scope; never share private
+  responses across users
 - Invalidate caches on mutations
 
 **Client-side caching**
@@ -787,10 +798,11 @@ const typeDefs = gql`
 - Queries automatically use cached data when possible
 - Mutations can update cache optimistically
 
-**Persistent queries**
+**Persisted queries**
 
 - Register queries ahead of time; clients send hash instead of full query
-- Reduces payload size and enables query whitelisting
+- Reduces payload size. A trusted persisted-query allowlist can restrict operations, but automatic persisted queries
+  (APQ) alone do not: clients can still submit new query text unless you enforce an allowlist
 
 ---
 
@@ -834,6 +846,7 @@ type Mutation {
 ```javascript
 // Server with PubSub
 const { PubSub } = require('graphql-subscriptions');
+const { GraphQLError } = require('graphql');
 const pubsub = new PubSub();
 
 const ORDER_UPDATED = 'ORDER_UPDATED';
@@ -843,10 +856,10 @@ const Subscription = {
     subscribe: (parent, { userId }, context) => {
       // Authorize subscription
       if (!context.user || context.user.id !== userId) {
-        throw new ForbiddenError('Not authorized');
+        throw new GraphQLError('Not authorized', { extensions: { code: 'FORBIDDEN' } });
       }
 
-      return pubsub.asyncIterator([ORDER_UPDATED]);
+      return pubsub.asyncIterableIterator([`${ORDER_UPDATED}:${userId}`]);
     },
     resolve: (payload) => payload.order,
   },
@@ -854,20 +867,32 @@ const Subscription = {
 
 const Mutation = {
   updateOrder: async (parent, { id, input }, context) => {
-    const order = await db.orders.update({ id, ...input });
+    if (!context.user) throw new GraphQLError('Not authenticated');
+    // This adapter authorizes and updates atomically using both ID and owner.
+    const order = await context.db.orders.updateForUser({
+      id,
+      userId: context.user.id,
+      status: input.status,
+    });
+    if (!order) throw new GraphQLError('Not authorized');
 
-    // Publish event
-    pubsub.publish(ORDER_UPDATED, { order });
+    // Publish only to the owning user's topic.
+    await pubsub.publish(`${ORDER_UPDATED}:${order.userId}`, { order });
 
     return { order };
   },
 };
 ```
 
-**Client subscription (Apollo)**
+The in-memory PubSub implementation is for demonstration and does not distribute events across server instances.
+Configure a subscription transport, authenticate connections, and recheck access for long-lived subscriptions when
+permissions change. The database adapter above must scope updates atomically to the authenticated owner.
+
+**Client subscription (Apollo Client 4)**
 
 ```javascript
-import { gql, useSubscription } from '@apollo/client';
+import { gql } from '@apollo/client';
+import { useSubscription } from '@apollo/client/react';
 
 const ORDER_UPDATED_SUBSCRIPTION = gql`
   subscription OnOrderUpdated($userId: ID!) {
@@ -1055,9 +1080,11 @@ const server = new ApolloServer({
   typeDefs,
   resolvers,
   introspection: process.env.NODE_ENV !== 'production',
-  playground: process.env.NODE_ENV !== 'production',
 });
 ```
+
+Apollo Server 4 and 5 use landing-page plugins rather than the removed `playground` option. Disabling introspection is
+an exposure-reduction measure, not a replacement for authorization or query limits.
 
 **Schema tooling**
 
@@ -1115,42 +1142,35 @@ describe('User resolver', () => {
 **Integration test queries**
 
 ```javascript
-import { createTestClient } from 'apollo-server-testing';
-import { ApolloServer } from 'apollo-server';
+import { ApolloServer } from '@apollo/server';
 
+// typeDefs, resolvers, db, and createLoaders are test fixtures for this schema.
 describe('GraphQL API', () => {
   it('fetches user with orders', async () => {
-    const server = new ApolloServer({
-      typeDefs,
-      resolvers,
-      context: () => ({ user: { id: '1' }, loaders: createLoaders() }),
-    });
-
-    const { query } = createTestClient(server);
-
-    const GET_USER = gql`
-      query GetUser($id: ID!) {
-        user(id: $id) {
-          id
-          displayName
-          orders(first: 5) {
-            edges {
-              node {
-                id
-              }
-            }
+    const server = new ApolloServer({ typeDefs, resolvers });
+    try {
+      const response = await server.executeOperation(
+        {
+          query: `query GetUser($id: ID!) {
+          user(id: $id) {
+            id
+            displayName
+            orders(first: 5) { edges { node { id } } }
           }
-        }
-      }
-    `;
-
-    const res = await query({
-      query: GET_USER,
-      variables: { id: '1' },
-    });
-
-    expect(res.errors).toBeUndefined();
-    expect(res.data.user.id).toBe('1');
+        }`,
+          variables: { id: '1' },
+        },
+        {
+          contextValue: { user: { id: '1' }, db, loaders: createLoaders({ id: '1' }) },
+        },
+      );
+      expect(response.body.kind).toBe('single');
+      if (response.body.kind !== 'single') throw new Error('Unexpected incremental response');
+      expect(response.body.singleResult.errors).toBeUndefined();
+      expect(response.body.singleResult.data.user.id).toBe('1');
+    } finally {
+      await server.stop();
+    }
   });
 });
 ```

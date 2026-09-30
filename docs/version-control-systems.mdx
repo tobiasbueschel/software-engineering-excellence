@@ -108,8 +108,8 @@ graph TB
 
 ### Distributed Version Control Systems (DVCS)
 
-In distributed systems, every developer has a complete copy of the repository, including its full history. Developers
-can commit changes locally and sync with remote repositories when needed.
+A full clone in a distributed system includes repository history. Shallow and partial clones intentionally omit some
+history or objects. Developers can commit changes locally and sync with remote repositories when needed.
 
 ```mermaid
 graph TB
@@ -531,7 +531,7 @@ management tools instead.
 If you accidentally commit secrets:
 
 1. Immediately rotate/invalidate the exposed credentials
-2. Use tools like `git-filter-branch` or `BFG Repo-Cleaner` to remove them from history
+2. Use tools like `git-filter-repo` or `BFG Repo-Cleaner` to remove them from history
 3. Force push the cleaned history (coordinate with team)
 
 ### Large Binary Files
@@ -547,7 +547,8 @@ down operations.
 
 ### Working Directly on Main
 
-Avoid making changes directly on the main/master branch, especially in team environments. Always use feature branches.
+Avoid making changes directly on the main/master branch, especially in team environments. Use the team's agreed
+branching and review workflow.
 
 ### Ignoring Merge Conflicts
 
@@ -560,17 +561,18 @@ Never rebase or force-push commits that others have already pulled. This rewrite
 for your team.
 
 ```shell
-# Dangerous! Only do this on your own unpushed branches
-git push --force
+# Only rewrite a published feature branch after coordinating with its collaborators
+git push --force-with-lease origin feature-branch
 ```
 
 ### Not Pulling Before Pushing
 
-Always pull the latest changes before pushing your work to avoid conflicts and rejected pushes.
+Fetch and inspect remote changes before integrating them. Use `git pull --ff-only` when you expect a fast-forward;
+otherwise choose a deliberate merge or rebase.
 
 ```shell
-# Good practice
-git pull
+# Fast-forward integration when local and remote history have not diverged
+git pull --ff-only
 git push
 ```
 
@@ -645,7 +647,7 @@ For managing dependencies between repositories:
 For large repositories:
 
 - Use shallow clones (`git clone --depth 1`)
-- Use sparse checkouts to only fetch needed files
+- Use sparse checkout to limit working-tree files; combine it with partial clone when you also want to reduce downloads
 - Use Git LFS for large files
 - Consider repository splitting if it becomes unmanageable
 

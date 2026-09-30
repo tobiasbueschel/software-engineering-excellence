@@ -299,7 +299,8 @@ logger.info(
 // ✅ Good: Proper types
 logger.info('Order placed', {
   orderId: 'ORD-123',
-  totalAmount: 99.99, // Number, not string
+  amountMinor: 9999, // Integer minor units according to the currency schema
+  currency: 'USD',
   itemCount: 3, // Number, not string
   timestamp: new Date().toISOString(), // ISO 8601 format
   isGift: true, // Boolean, not string
@@ -308,12 +309,15 @@ logger.info('Order placed', {
 // ❌ Bad: Everything as strings
 logger.info('Order placed', {
   orderId: 'ORD-123',
-  totalAmount: '99.99', // Should be number
+  amountMinor: '9999', // Inconsistent with the integer schema above
   itemCount: '3', // Should be number
   timestamp: 'Oct 19, 2025', // Non-standard format
   isGift: 'yes', // Should be boolean
 });
 ```
+
+Choose types from a documented schema. For monetary values, integer minor units or exact decimal strings are valid
+choices; binary floating-point values can introduce rounding errors. A decimal string is not inherently bad logging.
 
 ## Logging Workflow and Integration
 

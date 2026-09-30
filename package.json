@@ -17,6 +17,7 @@
     "clear": "docusaurus clear",
     "prepare": "husky",
     "lint": "prettier --check .",
+    "test:examples": "node --test scripts/test-content-examples.js",
     "format": "prettier --ignore-unknown --write .",
     "spell:check": "cspell 'docs/**/*.{md,mdx}' --show-suggestions",
     "spell:ignore": "cspell --words-only --unique 'docs/**/*.{md,mdx}' | sort --ignore-case >> dictionary.txt"

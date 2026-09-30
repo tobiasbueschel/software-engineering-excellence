@@ -67,10 +67,12 @@ implications in their work.
 
 :::
 
-## Common Vulnerabilities (OWASP Top 10)
+## Common Vulnerabilities
 
 The Open Web Application Security Project (OWASP) maintains a list of the most critical web application security risks.
-Understanding these vulnerabilities is the first step in preventing them.
+The examples below use the familiar 2021 categories. Consult the
+[OWASP Top 10:2025](https://top10.owasp.org/2025/0x00_2025-Introduction/) for the current classification, including
+supply chain failures and mishandling of exceptional conditions. Neither list is an exhaustive security checklist.
 
 ### 1. Broken Access Control
 
@@ -94,13 +96,14 @@ app.get('/api/users/:id/profile', authenticateUser, async (req, res) => {
   }
 
   const user = await User.findById(requestedUserId);
-  res.json(user);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user.id, displayName: user.displayName });
 });
 
 // Better: Use authorization middleware
 const authorize = (resource, action) => {
   return async (req, res, next) => {
-    const hasPermission = await checkPermission(req.user, resource, action);
+    const hasPermission = await checkPermission(req.user, resource, action, req.params.id);
 
     if (!hasPermission) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -112,7 +115,8 @@ const authorize = (resource, action) => {
 
 app.get('/api/users/:id/profile', authenticateUser, authorize('user:profile', 'read'), async (req, res) => {
   const user = await User.findById(req.params.id);
-  res.json(user);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user.id, displayName: user.displayName });
 });
 ```
 
@@ -250,19 +254,28 @@ app.post('/api/convert', (req, res) => {
 
 // Good: Use safer alternatives
 const { spawn } = require('child_process');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 app.post('/api/convert', (req, res) => {
   const { filename } = req.body;
 
   // Validate input
-  if (!/^[a-zA-Z0-9_.-]+$/.test(filename)) {
+  if (typeof filename !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*\.(png|jpe?g)$/.test(filename)) {
     return res.status(400).json({ error: 'Invalid filename' });
   }
 
   // Use spawn with array arguments (no shell interpretation)
-  const process = spawn('convert', [filename, 'output.png']);
+  // Resolve within a controlled directory; uploaded files must not be symlinks.
+  const input = path.join('/srv/uploads', filename);
+  const output = path.join('/srv/converted', `${crypto.randomUUID()}.png`);
+  const process = spawn('magick', [input, output], { shell: false });
+  process.on('error', () => {
+    if (!res.headersSent) res.status(500).json({ error: 'Conversion failed' });
+  });
 
   process.on('close', (code) => {
+    if (res.headersSent) return;
     if (code === 0) {
       res.json({ success: true });
     } else {
@@ -390,7 +403,7 @@ app.use((err, req, res, next) => {
 // Bad: Insecure CORS configuration
 app.use(
   cors({
-    origin: '*', // Allows any origin!
+    origin: '*', // Browsers reject wildcard origins with credentialed requests.
     credentials: true,
   }),
 );
@@ -434,10 +447,12 @@ app.use(
 );
 ```
 
+CORS controls browser access to responses; it does not replace authentication, authorization, or CSRF protection.
+
 **Security checklist**:
 
-```yaml
-# security-checklist.yml
+```text
+# Security checklist (plain text, not a YAML configuration)
 environment:
   - [ ] Disable debug mode in production
   - [ ] Remove default credentials
@@ -492,20 +507,20 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Run npm audit
         run: npm audit --audit-level=moderate
 
       - name: Run Snyk security scan
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@b075801f26076be9bb50521154cafab73f44da0c
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
 
       - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
+        uses: dependency-check/Dependency-Check_Action@1e54355a8b4c8abaa8cc7d0b70aa655a3bb15a6c
         with:
           project: 'myapp'
           path: '.'
@@ -522,17 +537,12 @@ const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 
 class AuthService {
-  // Password requirements
-  static PASSWORD_MIN_LENGTH = 12;
-  static PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+  // A 15-character minimum also supports password-only authentication.
+  static PASSWORD_MIN_LENGTH = 15;
 
   static validatePassword(password) {
-    if (password.length < this.PASSWORD_MIN_LENGTH) {
+    if (typeof password !== 'string' || [...password].length < this.PASSWORD_MIN_LENGTH) {
       throw new Error(`Password must be at least ${this.PASSWORD_MIN_LENGTH} characters`);
-    }
-
-    if (!this.PASSWORD_REGEX.test(password)) {
-      throw new Error('Password must contain uppercase, lowercase, number, and special character');
     }
 
     // Check against common passwords
@@ -590,6 +600,9 @@ class AuthService {
     return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
       expiresIn: '7d', // Longer-lived refresh token
       algorithm: 'HS256',
+      issuer: 'myapp.com',
+      audience: 'myapp-refresh',
+      jwtid: require('node:crypto').randomUUID(),
     });
   }
 
@@ -623,20 +636,27 @@ const authLimiter = rateLimit({
 
     res.status(429).json({
       error: 'Too many requests',
-      retryAfter: Math.ceil(req.rateLimit.resetTime / 1000),
+      retryAfter: Math.max(0, Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000)),
     });
   },
 });
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, password, mfaToken } = req.body;
+  if (
+    typeof email !== 'string' ||
+    typeof password !== 'string' ||
+    (mfaToken !== undefined && typeof mfaToken !== 'string')
+  ) {
+    return res.status(400).json({ error: 'Invalid input' });
+  }
 
   try {
     // Find user
     const user = await User.findOne({ email });
 
-    if (!user) {
-      // Use generic error to prevent user enumeration
+    if (!user || (await isAccountLocked(user.id))) {
+      // Use a generic error to reduce response-based account enumeration.
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -650,7 +670,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       // Check if account should be locked
       if (await shouldLockAccount(user.id)) {
         await lockAccount(user.id);
-        return res.status(423).json({ error: 'Account locked due to multiple failed attempts' });
+        return res.status(401).json({ error: 'Invalid credentials' });
       }
 
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -673,8 +693,9 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const accessToken = AuthService.generateToken(user);
     const refreshToken = AuthService.generateRefreshToken(user);
 
-    // Store refresh token in database
-    await storeRefreshToken(user.id, refreshToken, req.ip, req.headers['user-agent']);
+    // Persist only a hash of the refresh token, plus expiry and reuse-detection metadata.
+    const refreshHash = require('node:crypto').createHash('sha256').update(refreshToken).digest('hex');
+    await storeRefreshToken(user.id, refreshHash, req.ip, req.headers['user-agent']);
 
     // Log successful login
     await logSuccessfulLogin(user.id, req.ip);
@@ -691,76 +712,75 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 });
 ```
 
+Password policy should favor length and a blocklist of common or compromised passwords. Do not require arbitrary
+character mixtures or scheduled password changes without evidence of compromise. NIST specifies at least 15 characters
+for a password used alone and permits an eight-character minimum when the password is part of MFA; allow at least 64
+characters. Use a maintained Argon2id implementation for new password storage. Legacy bcrypt implementations commonly
+limit inputs to 72 bytes, so do not silently truncate long passwords. See
+[NIST password guidance](https://pages.nist.gov/800-63-4/sp800-63b.html) and
+[OWASP password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+
+The login example assumes application-specific helpers for lock expiry, atomic failed-attempt tracking, and token
+persistence. Generic errors reduce response-based account enumeration; timing differences also need attention. MFA
+verification must reject reuse of a previously accepted code and enforce its own attempt limit.
+
 ### 8. Software and Data Integrity Failures
 
 Insecure CI/CD pipelines, unsigned software, or unverified updates.
 
 ```yaml
-# Secure CI/CD pipeline example
-# .github/workflows/deploy.yml
-name: Secure Deployment
-
+# Security checks for a Node.js application; signing/deployment is configured separately.
+name: Security Checks
 on:
   push:
     branches: [main]
+  pull_request:
 
 permissions:
   contents: read
-  id-token: write # Required for OIDC
 
 jobs:
   security-checks:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Run security audit
-        run: npm audit --audit-level=high
-
-      - name: SAST scanning
-        uses: github/codeql-action/analyze@v2
-
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+      - name: Analyze source
+        uses: github/codeql-action/analyze@v4
       - name: Dependency review
-        uses: actions/dependency-review-action@v3
-
-      - name: Secret scanning
-        uses: trufflesecurity/trufflehog@main
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v5.0.0
+      - name: Secret scan
+        uses: trufflesecurity/trufflehog@v3.97.9
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
+          extra_args: --results=verified,unknown
 
   build:
     needs: security-checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Build application
-        run: npm run build
-
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
         with:
-          path: ./
-          format: cyclonedx-json
-
-      - name: Sign artifacts
-        uses: sigstore/cosign-installer@main
-
-      - name: Sign container image
-        run: |
-          cosign sign --key env://COSIGN_KEY ${{ env.IMAGE }}
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Deploy to production
-        run: |
-          # Verify signed artifacts before deployment
-          cosign verify --key env://COSIGN_PUBLIC_KEY ${{ env.IMAGE }}
-          # Deploy...
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
 ```
 
 ### 9. Security Logging and Monitoring Failures
@@ -783,6 +803,7 @@ const securityLogger = winston.createLogger({
 
 // Security event types to log
 const SecurityEvents = {
+  AUTH_ATTEMPT: 'auth.attempt',
   AUTH_SUCCESS: 'auth.success',
   AUTH_FAILURE: 'auth.failure',
   AUTH_LOCKOUT: 'auth.lockout',
@@ -832,30 +853,36 @@ app.use((req, res, next) => {
 
 // Anomaly detection
 class AnomalyDetector {
-  constructor() {
+  constructor(windowMs = 60_000, maxKeys = 10_000) {
+    if (!Number.isSafeInteger(windowMs) || windowMs <= 0 || !Number.isSafeInteger(maxKeys) || maxKeys <= 0) {
+      throw new RangeError('Window and capacity must be positive integers');
+    }
+    this.windowMs = windowMs;
+    this.maxKeys = maxKeys;
     this.requestCounts = new Map();
-    this.suspiciousIPs = new Set();
   }
 
   trackRequest(ip, endpoint) {
     const key = `${ip}:${endpoint}`;
-    const count = (this.requestCounts.get(key) || 0) + 1;
-    this.requestCounts.set(key, count);
+    const now = Date.now();
+    let state = this.requestCounts.get(key);
+    if (!state || now >= state.expiresAt) {
+      this.requestCounts.delete(key);
+      if (this.requestCounts.size >= this.maxKeys) {
+        this.requestCounts.delete(this.requestCounts.keys().next().value);
+      }
+      state = { count: 0, expiresAt: now + this.windowMs, alerted: false };
+      this.requestCounts.set(key, state);
+    }
 
-    // Alert on suspicious activity
-    if (count > 100) {
-      // 100 requests in window
-      this.flagSuspiciousActivity(ip, endpoint, count);
+    state.count++;
+    if (state.count > 100 && !state.alerted) {
+      state.alerted = true;
+      this.flagSuspiciousActivity(ip, endpoint, state.count);
     }
   }
 
   flagSuspiciousActivity(ip, endpoint, count) {
-    if (this.suspiciousIPs.has(ip)) {
-      return; // Already flagged
-    }
-
-    this.suspiciousIPs.add(ip);
-
     logSecurityEvent(SecurityEvents.SUSPICIOUS_ACTIVITY, {
       ip,
       endpoint,
@@ -879,6 +906,10 @@ class AnomalyDetector {
 }
 ```
 
+This bounded, single-process counter illustrates an alerting heuristic. It resets each key's window and sends at most
+one alert per window; eviction or process restarts lose history. Use shared monitoring for multiple instances and
+investigate signals before blocking traffic.
+
 ### 10. Server-Side Request Forgery (SSRF)
 
 Application fetches remote resources without validating user-supplied URLs.
@@ -897,103 +928,47 @@ app.post('/api/fetch', async (req, res) => {
   res.send(data);
 });
 
-// Good: Validate and restrict URLs
-const allowedDomains = ['api.example.com', 'cdn.example.com'];
-const blockedNetworks = [
-  '127.0.0.0/8', // Loopback
-  '10.0.0.0/8', // Private
-  '172.16.0.0/12', // Private
-  '192.168.0.0/16', // Private
-  '169.254.0.0/16', // Link-local
-  'fc00::/7', // IPv6 private
-];
-
-function isValidURL(url) {
-  try {
-    const parsed = new URL(url);
-
-    // Only allow HTTPS
-    if (parsed.protocol !== 'https:') {
-      return false;
-    }
-
-    // Check against allowlist
-    if (!allowedDomains.includes(parsed.hostname)) {
-      return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function isBlockedIP(hostname) {
-  const dns = require('dns').promises;
-
-  try {
-    const addresses = await dns.resolve4(hostname);
-
-    // Check if any resolved IP is in blocked networks
-    for (const address of addresses) {
-      if (isPrivateIP(address)) {
-        return true;
-      }
-    }
-
-    return false;
-  } catch {
-    return true; // Fail closed
-  }
-}
+// Good: Select a server-configured endpoint instead of accepting arbitrary URLs.
+// Configure network egress rules to block private and metadata services as well.
+const endpoints = Object.freeze({
+  catalog: 'https://api.example.com/catalog',
+  status: 'https://status.example.com/summary',
+});
 
 app.post('/api/fetch', async (req, res) => {
-  const { url } = req.body;
-
-  // Validate URL format and domain
-  if (!isValidURL(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-
-  const parsed = new URL(url);
-
-  // Check if hostname resolves to private IP
-  if (await isBlockedIP(parsed.hostname)) {
-    return res.status(403).json({ error: 'Access to private networks is forbidden' });
+  const { resource } = req.body;
+  if (typeof resource !== 'string' || !Object.hasOwn(endpoints, resource)) {
+    return res.status(400).json({ error: 'Unknown resource' });
   }
 
   try {
-    const response = await fetch(url, {
-      timeout: 5000, // 5 second timeout
-      redirect: 'manual', // Don't follow redirects
-      headers: {
-        'User-Agent': 'MyApp/1.0',
-      },
+    const response = await fetch(endpoints[resource], {
+      signal: AbortSignal.timeout(5000),
+      redirect: 'error',
     });
+    if (!response.ok || !response.body) throw new Error('Upstream request failed');
 
-    // Limit response size
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    let size = 0;
     const chunks = [];
-
+    let size = 0;
     for await (const chunk of response.body) {
-      size += chunk.length;
-
-      if (size > MAX_SIZE) {
-        throw new Error('Response too large');
-      }
-
-      chunks.push(chunk);
+      size += chunk.byteLength;
+      if (size > 10 * 1024 * 1024) throw new Error('Response too large');
+      chunks.push(Buffer.from(chunk));
     }
 
-    const data = Buffer.concat(chunks).toString();
-    res.send(data);
+    // Treat upstream content as text instead of executing it as HTML.
+    res.type('text/plain').send(Buffer.concat(chunks).toString('utf8'));
   } catch (error) {
-    logger.error('Fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch resource' });
+    logger.error('Upstream fetch failed');
+    res.status(502).json({ error: 'Failed to fetch resource' });
   }
 });
 ```
+
+A hostname allowlist alone does not prevent DNS rebinding. For applications that must accept user-supplied URLs,
+validate both IPv4 and IPv6 destinations, bind the connection to the validated address, restrict network egress, and
+revalidate every redirect. See the
+[OWASP SSRF prevention guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html).
 
 ## Authentication and Authorization
 
@@ -1018,10 +993,10 @@ class JWTService {
   createAccessToken(user) {
     return jwt.sign(
       {
-        sub: user.id,  // Subject
+        sub: user.id, // Subject
         email: user.email,
         roles: user.roles,
-        type: 'access'
+        type: 'access',
       },
       this.accessTokenSecret,
       {
@@ -1029,8 +1004,8 @@ class JWTService {
         algorithm: 'HS256',
         issuer: 'myapp.com',
         audience: 'myapp-api',
-        jwtid: crypto.randomBytes(16).toString('hex')  // Unique token ID
-      }
+        jwtid: crypto.randomBytes(16).toString('hex'), // Unique token ID
+      },
     );
   }
 
@@ -1038,14 +1013,16 @@ class JWTService {
     return jwt.sign(
       {
         sub: user.id,
-        type: 'refresh'
+        type: 'refresh',
       },
       this.refreshTokenSecret,
       {
         expiresIn: '7d',
         algorithm: 'HS256',
-        jwtid: crypto.randomBytes(16).toString('hex')
-      }
+        issuer: 'myapp.com',
+        audience: 'myapp-refresh',
+        jwtid: crypto.randomBytes(16).toString('hex'),
+      },
     );
   }
 
@@ -1054,7 +1031,7 @@ class JWTService {
       const payload = jwt.verify(token, this.accessTokenSecret, {
         algorithms: ['HS256'],
         issuer: 'myapp.com',
-        audience: 'myapp-api'
+        audience: 'myapp-api',
       });
 
       if (payload.type !== 'access') {
@@ -1070,7 +1047,9 @@ class JWTService {
   verifyRefreshToken(token) {
     try {
       const payload = jwt.verify(token, this.refreshTokenSecret, {
-        algorithms: ['HS256']
+        algorithms: ['HS256'],
+        issuer: 'myapp.com',
+        audience: 'myapp-refresh',
       });
 
       if (payload.type !== 'refresh') {
@@ -1084,7 +1063,7 @@ class JWTService {
   }
 }
 
-// Token blacklist for revocation
+// Token blacklist for revocation (ioredis API; use a connected client)
 class TokenBlacklist {
   constructor(redis) {
     this.redis = redis;
@@ -1102,11 +1081,12 @@ class TokenBlacklist {
 }
 
 // Authentication middleware
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];  // Bearer TOKEN
+  const token = /^Bearer +([^\s]+)$/i.exec(authHeader ?? '')?.[1];
 
   if (!token) {
+    res.set('WWW-Authenticate', 'Bearer realm="myapp-api"');
     return res.status(401).json({ error: 'No token provided' });
   }
 
@@ -1115,129 +1095,106 @@ function authenticateToken(req, res, next) {
 
     // Check if token is blacklisted
     if (await tokenBlacklist.isRevoked(payload.jti)) {
+      res.set('WWW-Authenticate', 'Bearer realm="myapp-api"');
       return res.status(401).json({ error: 'Token has been revoked' });
     }
 
     req.user = payload;
     next();
   } catch (error) {
+    res.set('WWW-Authenticate', 'Bearer realm="myapp-api"');
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
 ```
 
+Keep access and refresh signing secrets separate. Rotate refresh tokens and store their hashes with expiry and reuse
+detection in a durable store. Revocation-cache failures need an explicit policy; sensitive operations should fail
+closed. The examples omit token issuance routes and persistence setup.
+
 ### OAuth 2.0 and OpenID Connect
 
+OAuth 2.0 delegates access; OpenID Connect adds authentication. Use a maintained client rather than decoding JWTs and
+treating their contents as verified. This example uses the `openid-client` 6 API with a trusted HTTPS issuer and a
+pre-registered callback URL. Application-specific database and logging helpers are omitted.
+
 ```javascript
-// OAuth 2.0 implementation (Authorization Code Flow with PKCE)
-const crypto = require('crypto');
+import * as client from 'openid-client';
 
-class OAuthService {
-  constructor(config) {
-    this.clientId = config.clientId;
-    this.clientSecret = config.clientSecret;
-    this.redirectUri = config.redirectUri;
-    this.authorizationEndpoint = config.authorizationEndpoint;
-    this.tokenEndpoint = config.tokenEndpoint;
-  }
+const redirectUri = 'https://app.example.com/auth/callback';
+const config = await client.discovery(
+  new URL(process.env.OIDC_ISSUER),
+  process.env.OIDC_CLIENT_ID,
+  process.env.OIDC_CLIENT_SECRET,
+);
+// Also validate ID token signatures against the issuer's published keys.
+client.enableNonRepudiationChecks(config);
 
-  // Generate PKCE challenge
-  generatePKCEChallenge() {
-    const verifier = crypto.randomBytes(32).toString('base64url');
-    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+app.get('/auth/login', async (req, res, next) => {
+  try {
+    const verifier = client.randomPKCECodeVerifier();
+    const state = client.randomState();
+    const nonce = client.randomNonce();
+    req.session.oidc = { verifier, state, nonce };
 
-    return { verifier, challenge };
-  }
-
-  // Generate authorization URL
-  getAuthorizationUrl(state, pkceChallenge) {
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: this.clientId,
-      redirect_uri: this.redirectUri,
+    const url = client.buildAuthorizationUrl(config, {
+      redirect_uri: redirectUri,
       scope: 'openid profile email',
-      state: state,
-      code_challenge: pkceChallenge,
+      code_challenge: await client.calculatePKCECodeChallenge(verifier),
       code_challenge_method: 'S256',
+      state,
+      nonce,
     });
-
-    return `${this.authorizationEndpoint}?${params.toString()}`;
+    // Persist the server-side session before leaving the application.
+    await new Promise((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
+    res.redirect(url.href);
+  } catch (error) {
+    next(error);
   }
-
-  // Exchange authorization code for tokens
-  async exchangeCodeForTokens(code, pkceVerifier) {
-    const response = await fetch(this.tokenEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')}`,
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: this.redirectUri,
-        code_verifier: pkceVerifier,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to exchange code for tokens');
-    }
-
-    return await response.json();
-  }
-}
-
-// OAuth login flow
-app.get('/auth/login', (req, res) => {
-  // Generate state for CSRF protection
-  const state = crypto.randomBytes(16).toString('hex');
-
-  // Generate PKCE challenge
-  const { verifier, challenge } = oauthService.generatePKCEChallenge();
-
-  // Store state and verifier in session
-  req.session.oauthState = state;
-  req.session.pkceVerifier = verifier;
-
-  // Redirect to authorization server
-  const authUrl = oauthService.getAuthorizationUrl(state, challenge);
-  res.redirect(authUrl);
 });
 
-app.get('/auth/callback', async (req, res) => {
-  const { code, state } = req.query;
-
-  // Verify state to prevent CSRF
-  if (state !== req.session.oauthState) {
-    return res.status(400).json({ error: 'Invalid state' });
+app.get('/auth/callback', async (req, res, next) => {
+  const pending = req.session.oidc;
+  if (!pending?.state || !pending?.nonce || !pending?.verifier) {
+    return res.status(400).json({ error: 'No pending login' });
   }
 
+  delete req.session.oidc;
   try {
-    // Exchange code for tokens
-    const tokens = await oauthService.exchangeCodeForTokens(code, req.session.pkceVerifier);
-
-    // Verify ID token
-    const idToken = jwt.decode(tokens.id_token);
-
-    // Create or update user
+    await new Promise((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
+    // Use the configured origin, never a client-supplied Host header.
+    const callbackUrl = new URL(req.originalUrl, redirectUri);
+    const tokens = await client.authorizationCodeGrant(config, callbackUrl, {
+      pkceCodeVerifier: pending.verifier,
+      expectedState: pending.state,
+      expectedNonce: pending.nonce,
+      idTokenExpected: true,
+    });
+    const claims = tokens.claims();
     const user = await findOrCreateUser({
-      id: idToken.sub,
-      email: idToken.email,
-      name: idToken.name,
+      issuer: claims.iss,
+      subject: claims.sub,
+      email: claims.email_verified === true ? claims.email : undefined,
+      name: claims.name,
     });
 
-    // Create session
+    // Rotate the session ID after authentication to prevent session fixation.
+    await new Promise((resolve, reject) => req.session.regenerate((err) => (err ? reject(err) : resolve())));
     req.session.userId = user.id;
-    req.session.accessToken = tokens.access_token;
-
+    await new Promise((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
     res.redirect('/dashboard');
   } catch (error) {
-    logger.error('OAuth callback error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    next(error); // Central error handling returns a generic authentication error.
   }
 });
 ```
+
+The library validates the issuer, audience, expiration, nonce, state, and PKCE exchange; signature checks are explicitly
+enabled above. Identify accounts by the pair of issuer and subject, and do not automatically link accounts by email. Use
+secure, HTTP-only session cookies, a suitable SameSite policy, short login-attempt lifetimes, and a shared session store
+that consumes each attempt atomically when handling concurrent callbacks. See the
+[client checks](https://github.com/panva/openid-client/blob/main/docs/interfaces/AuthorizationCodeGrantChecks.md) and
+[OpenID Connect validation rules](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
 
 ## Input Validation and Sanitization
 
@@ -1292,73 +1249,41 @@ class InputValidator {
     });
   }
 
-  // SQL-safe string
-  static sanitizeForSQL(str) {
-    // Use parameterized queries instead, but this helps as defense in depth
-    return str.replace(/['";\\]/g, '');
-  }
-
-  // Filename sanitization
+  // Display-label sanitization only; this does not establish filesystem safety.
   static sanitizeFilename(filename) {
     return filename.replace(/[^a-zA-Z0-9._-]/g, '').substring(0, 255);
   }
 }
 
-// Request validation middleware
-function validateRequest(schema) {
+// Validate one explicit request source, rather than falling back between sources.
+function validateRequest(schema, source = 'body') {
   return (req, res, next) => {
-    const { body, query, params } = req;
+    const input = req[source];
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return res.status(400).json({ error: 'Invalid input' });
+    }
 
-    try {
-      // Validate against schema
-      for (const [field, rules] of Object.entries(schema)) {
-        const value = body[field] || query[field] || params[field];
+    for (const [field, rules] of Object.entries(schema)) {
+      const value = input[field];
+      const missing = value === undefined || value === null || value === '';
+      if (missing && !rules.required) continue;
 
-        if (rules.required && !value) {
-          return res.status(400).json({
-            error: 'Validation failed',
-            field: field,
-            message: `${field} is required`,
-          });
-        }
-
-        if (value && rules.type === 'email' && !InputValidator.isValidEmail(value)) {
-          return res.status(400).json({
-            error: 'Validation failed',
-            field: field,
-            message: 'Invalid email format',
-          });
-        }
-
-        if (value && rules.type === 'url' && !InputValidator.isValidURL(value)) {
-          return res.status(400).json({
-            error: 'Validation failed',
-            field: field,
-            message: 'Invalid URL format',
-          });
-        }
-
-        if (value && rules.maxLength && value.length > rules.maxLength) {
-          return res.status(400).json({
-            error: 'Validation failed',
-            field: field,
-            message: `${field} must be at most ${rules.maxLength} characters`,
-          });
-        }
-
-        if (value && rules.pattern && !rules.pattern.test(value)) {
-          return res.status(400).json({
-            error: 'Validation failed',
-            field: field,
-            message: `${field} format is invalid`,
-          });
-        }
+      let valid = !missing;
+      if (rules.type === 'number') {
+        valid = valid && typeof value === 'number' && Number.isFinite(value);
+        if (rules.min !== undefined) valid = valid && value >= rules.min;
+        if (rules.max !== undefined) valid = valid && value <= rules.max;
+      } else {
+        valid = valid && typeof value === 'string';
+        if (valid && rules.type === 'email') valid = InputValidator.isValidEmail(value);
+        if (valid && rules.type === 'url') valid = InputValidator.isValidURL(value);
+        if (valid && rules.maxLength !== undefined) valid = value.length <= rules.maxLength;
+        if (valid && rules.pattern) valid = rules.pattern.test(value);
       }
 
-      next();
-    } catch (error) {
-      res.status(400).json({ error: 'Validation failed' });
+      if (!valid) return res.status(400).json({ error: 'Validation failed', field });
     }
+    next();
   };
 }
 
@@ -1373,11 +1298,16 @@ app.post(
   }),
   async (req, res) => {
     // Request is validated
-    const user = await createUser(req.body);
+    const { email, username, age, website } = req.body;
+    const user = await createUser({ email, username, age, website });
     res.json(user);
   },
 );
 ```
+
+Validation does not replace parameterized database queries, object-level authorization, or output encoding. Construct an
+allowlisted persistence object after validation instead of passing the entire request body to an ORM; this prevents mass
+assignment of fields such as roles or administrative privileges.
 
 ## Secure Configuration Management
 
@@ -1497,32 +1427,28 @@ class SecretsManager {
 
 ```bash
 # ESLint security plugin
-npm install --save-dev eslint-plugin-security
+npm install --save-dev eslint eslint-plugin-security
+```
 
-# .eslintrc.js
-module.exports = {
-  plugins: ['security'],
-  extends: ['plugin:security/recommended'],
-  rules: {
-    'security/detect-object-injection': 'warn',
-    'security/detect-non-literal-regexp': 'warn',
-    'security/detect-unsafe-regex': 'error',
-    'security/detect-buffer-noassert': 'error',
-    'security/detect-eval-with-expression': 'error',
-    'security/detect-no-csrf-before-method-override': 'error',
-    'security/detect-possible-timing-attacks': 'warn'
-  }
-};
+```javascript
+// eslint.config.cjs
+const security = require('eslint-plugin-security');
+module.exports = [security.configs.recommended];
+```
 
+The [ESLint security plugin](https://github.com/eslint-community/eslint-plugin-security) uses ESLint's flat
+configuration. Its findings need review because a suspicious pattern can be safe in context.
+
+```bash
 # Run security linting
-npm run lint
+npx eslint src/
 
 # SonarQube scanning
 sonar-scanner \
   -Dsonar.projectKey=myapp \
   -Dsonar.sources=src \
   -Dsonar.host.url=http://localhost:9000 \
-  -Dsonar.login=$SONAR_TOKEN
+  -Dsonar.token="$SONAR_TOKEN"
 
 # Semgrep security scanning
 semgrep --config=auto src/
@@ -1532,7 +1458,7 @@ semgrep --config=auto src/
 
 ```bash
 # OWASP ZAP scanning
-docker run -t owasp/zap2docker-stable zap-baseline.py \
+docker run -t -v "$PWD:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
   -t https://myapp.example.com \
   -r zap-report.html
 
@@ -1600,6 +1526,11 @@ curl -X POST https://burp-api.example.com/scan \
 ## Incident Response
 
 ### Security Incident Response Plan
+
+This skeleton illustrates incident routing. Pattern matches are candidate signals with false positives and false
+negatives, so validate them before classifying an incident. Production integrations must redact sensitive event data,
+retain records in bounded storage, establish trusted client addresses, and require a reviewed policy before blocking or
+rate limiting a source.
 
 ```javascript
 // Incident detection and response

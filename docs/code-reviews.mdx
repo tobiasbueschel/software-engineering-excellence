@@ -221,7 +221,7 @@ jobs:
   automated-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Run linter
         run: npm run lint
@@ -239,7 +239,7 @@ jobs:
         run: npm audit
 
       - name: Check for secrets
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.97.9
 ```
 
 #### 5. Automate What Should Not Be Debated
@@ -490,7 +490,7 @@ mindmap
 
 // ✅ Effective feedback:
 // "This nested loop has O(n²) complexity. For large datasets, consider using
-// a Map for O(n) lookup instead. Here's an example: [code suggestion]"
+// a Set for expected O(1) membership checks and O(n + m) total work instead. Here's an example: [code suggestion]"
 
 // Before (inefficient):
 function findDuplicates(arr1, arr2) {
@@ -499,6 +499,7 @@ function findDuplicates(arr1, arr2) {
     for (let j = 0; j < arr2.length; j++) {
       if (arr1[i] === arr2[j]) {
         duplicates.push(arr1[i]);
+        break; // Include each arr1 entry at most once, matching the Set implementation.
       }
     }
   }
@@ -528,7 +529,7 @@ Help authors prioritize by categorizing feedback:
 // This query is vulnerable to SQL injection. Use parameterized queries instead.
 const query = `SELECT * FROM users WHERE id = ${userId}`;
 // Should be:
-const query = 'SELECT * FROM users WHERE id = ?';
+const query = 'SELECT id, display_name FROM users WHERE id = ?';
 database.query(query, [userId]);
 
 // 🟡 Important: Missing error handling
@@ -579,7 +580,7 @@ app.get('/user/:id', (req, res) => {
   const userId = req.params.id;
   const query = `SELECT * FROM users WHERE id = ${userId}`;
   db.query(query, (err, result) => {
-    res.json(result);
+    res.json(rows[0]);
   });
 });
 
@@ -598,14 +599,14 @@ app.get('/user/:id', async (req, res) => {
 
   try {
     // Use parameterized query
-    const query = 'SELECT * FROM users WHERE id = ?';
-    const [result] = await db.query(query, [userId]);
+    const query = 'SELECT id, display_name FROM users WHERE id = ?';
+    const [rows] = await db.query(query, [userId]);
 
-    if (!result) {
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json(result);
+    res.json(rows[0]);
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -825,7 +826,7 @@ Avoid these common mistakes that make reviews less effective:
 
 #### 2. Requesting Perfection
 
-```javascript
+```text
 // ❌ Unreasonable:
 "This code works but it could be more elegant. Rewrite using functional
 programming paradigms."
@@ -838,7 +839,7 @@ functional approach, but not necessary now."
 
 #### 3. Providing Vague Feedback
 
-```javascript
+```text
 // ❌ Not helpful:
 "This function is too complex."
 
@@ -850,7 +851,7 @@ extracting the validation logic (lines 45-60) and the error handling
 
 #### 4. Being Too Lenient
 
-```javascript
+```text
 // ❌ Not doing your job:
 "Looks good!" [without actually reviewing the code carefully]
 
@@ -1071,7 +1072,7 @@ jobs:
   ai-review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: AI Code Review
         uses: coderabbitai/ai-pr-reviewer@latest

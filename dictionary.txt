@@ -470,3 +470,8 @@ wsse
 zcard
 zrange
 zremrangebyscore
+wakeups
+lifecycles
+magick
+zaproxy
+dryrun

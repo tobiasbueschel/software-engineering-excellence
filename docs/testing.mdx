@@ -338,7 +338,7 @@ Focus on what the code does, not how it does it:
 ```javascript
 // Good: Testing behavior
 test('should notify users when order is shipped', async () => {
-  const order = await createOrder({ userId: 1, items: [...] });
+  const order = await createOrder({ userId: 1, items: [{ productId: '1', quantity: 1 }] });
 
   await shipOrder(order.id);
 
@@ -346,8 +346,8 @@ test('should notify users when order is shipped', async () => {
   expect(notifications).toContainEqual(
     expect.objectContaining({
       type: 'ORDER_SHIPPED',
-      orderId: order.id
-    })
+      orderId: order.id,
+    }),
   );
 });
 
@@ -357,11 +357,7 @@ test('should call sendEmail with correct parameters', async () => {
 
   await shipOrder(orderId);
 
-  expect(sendEmailSpy).toHaveBeenCalledWith(
-    'user@example.com',
-    'Order Shipped',
-    expect.any(String)
-  );
+  expect(sendEmailSpy).toHaveBeenCalledWith('user@example.com', 'Order Shipped', expect.any(String));
 });
 ```
 
@@ -1227,12 +1223,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: '18'
+          node-version: '24'
 
       - name: Install dependencies
         run: npm ci
@@ -1244,7 +1240,7 @@ jobs:
         run: npm run test:integration
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: ./coverage/coverage-final.json
 

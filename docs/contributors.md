@@ -11,5 +11,6 @@ following people.
 
 **Thanks also goes to:**
 
-- [unDraw](https://undraw.co/) - the incredible open-source illustrations library
-- [Docusaurus](https://docusaurus.io/) - FaceBook's documentation framework that is used to build this
+- [unDraw](https://undraw.co/) - the illustrations library, used under the [unDraw license](https://undraw.co/license)
+- [Docusaurus](https://docusaurus.io/) - the documentation framework originally created at Facebook, used to build this
+  handbook
