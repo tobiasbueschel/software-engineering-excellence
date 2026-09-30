@@ -392,7 +392,7 @@ app.use(
   cors({
     origin: '*', // Allows any origin!
     credentials: true,
-  })
+  }),
 );
 
 // Good: Restrictive CORS
@@ -403,7 +403,7 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400, // 24 hours
-  })
+  }),
 );
 
 // Security headers middleware
@@ -430,7 +430,7 @@ app.use(
       preload: true,
     },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-  })
+  }),
 );
 ```
 
@@ -1375,7 +1375,7 @@ app.post(
     // Request is validated
     const user = await createUser(req.body);
     res.json(user);
-  }
+  },
 );
 ```
 

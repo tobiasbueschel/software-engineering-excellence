@@ -613,26 +613,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - run: npm run lint        # 2 min
-      - run: npm test            # 10 min
-      - run: npm run test:e2e    # 20 min
+      - run: npm run lint # 2 min
+      - run: npm test # 10 min
+      - run: npm run test:e2e # 20 min
 
 # Good: Parallel execution
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - run: npm run lint        # 2 min
+      - run: npm run lint # 2 min
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: npm test            # 10 min
+      - run: npm test # 10 min
 
   test-e2e:
     runs-on: ubuntu-latest
     steps:
-      - run: npm run test:e2e    # 20 min
+      - run: npm run test:e2e # 20 min
 ```
 
 ### 4. Inadequate Rollback Procedures

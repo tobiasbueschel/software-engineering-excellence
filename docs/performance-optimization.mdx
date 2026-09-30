@@ -481,7 +481,7 @@ async function processFilesGood(filePaths, concurrency = 5) {
       batch.map(async (path) => {
         const content = await fs.readFile(path, 'utf8');
         return processContent(content);
-      })
+      }),
     );
     results.push(...batchResults);
   }
@@ -601,7 +601,7 @@ async function getUser(userId) {
       // This only runs on cache miss
       return await db.query('SELECT * FROM users WHERE id = ?', [userId]);
     },
-    { ttl: 600, layers: ['memory', 'redis'] }
+    { ttl: 600, layers: ['memory', 'redis'] },
   );
 }
 ```
@@ -689,7 +689,7 @@ async function getActiveUsersPaginated(page = 1, pageSize = 50) {
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `,
-      [pageSize, offset]
+      [pageSize, offset],
     ),
     db.query(`
       SELECT COUNT(*) as total
@@ -1066,7 +1066,7 @@ class RealUserMonitoring {
         url: window.location.href,
         userAgent: navigator.userAgent,
         timestamp: Date.now(),
-      })
+      }),
     );
   }
 
@@ -1224,7 +1224,7 @@ function initializeFeatures() {
         module.initialize();
       });
     },
-    { once: true, passive: true }
+    { once: true, passive: true },
   );
 }
 ```

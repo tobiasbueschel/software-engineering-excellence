@@ -208,7 +208,7 @@ app.post('/login', async (req, res) => {
     await client.setex(
       `session:${sessionId}`,
       3600, // 1 hour TTL
-      JSON.stringify({ username, loginTime: Date.now() })
+      JSON.stringify({ username, loginTime: Date.now() }),
     );
 
     res.cookie('sessionId', sessionId, {
@@ -462,7 +462,7 @@ app.post('/api/videos/process', async (req, res) => {
         type: 'exponential',
         delay: 2000,
       },
-    }
+    },
   );
 
   // Return immediately
@@ -814,7 +814,7 @@ async function fetchUserData(userId) {
       initialDelay: 1000,
       factor: 2,
       jitter: true,
-    }
+    },
   );
 }
 ```

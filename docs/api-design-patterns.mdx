@@ -846,7 +846,7 @@ wss.on('connection', (ws) => {
       JSON.stringify({
         type: 'echo',
         data: message.toString(),
-      })
+      }),
     );
 
     // Broadcast to all clients
@@ -856,7 +856,7 @@ wss.on('connection', (ws) => {
           JSON.stringify({
             type: 'broadcast',
             message: message.toString(),
-          })
+          }),
         );
       }
     });
@@ -2011,7 +2011,7 @@ export const userRouter = router({
       z.object({
         email: z.string().email(),
         name: z.string().min(1),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       return await db.user.create({

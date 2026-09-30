@@ -32,13 +32,17 @@
 
 .chapterCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.12), 0 8px 16px -8px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 12px 24px -10px rgba(0, 0, 0, 0.12),
+    0 8px 16px -8px rgba(0, 0, 0, 0.08);
   border-color: var(--ifm-color-primary);
   text-decoration: none !important;
 }
 
 [data-theme='dark'] .chapterCard:hover {
-  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.3), 0 8px 16px -8px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 12px 24px -10px rgba(0, 0, 0, 0.3),
+    0 8px 16px -8px rgba(0, 0, 0, 0.2);
 }
 
 /* Mobile: Disable hover effects on touch devices for better UX */

@@ -18,6 +18,15 @@ build software that is secure, reliable, scalable, maintainable, and efficient.
 
 Read it here: https://software-engineering-excellence.vercel.app
 
+## Local development
+
+Use Node.js 24 LTS (see `.nvmrc`), then run `npm ci` and `npm start`. Before pushing changes, run `npm run build`,
+`npm run lint`, and `npm run spell:check`.
+
+The dependency overrides in `package.json` select patched releases of `serialize-javascript`, `lodash-es`, and SockJS's
+`uuid` dependency until their upstream packages update their requirements. UUID stays on version 11 because SockJS
+requires CommonJS support.
+
 ## Contributions
 
 Contributions are more than welcome, but please carefully read the

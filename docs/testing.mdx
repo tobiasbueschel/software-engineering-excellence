@@ -1071,7 +1071,7 @@ describe('customSort property-based tests', () => {
       fc.property(fc.array(fc.integer()), (arr) => {
         const sorted = customSort([...arr]);
         expect(sorted.length).toBe(arr.length);
-      })
+      }),
     );
   });
 
@@ -1081,7 +1081,7 @@ describe('customSort property-based tests', () => {
         const sorted = customSort([...arr]);
         const originalSorted = [...arr].sort((a, b) => a - b);
         expect(sorted).toEqual(originalSorted);
-      })
+      }),
     );
   });
 
@@ -1091,7 +1091,7 @@ describe('customSort property-based tests', () => {
         const sorted1 = customSort([...arr]);
         const sorted2 = customSort([...sorted1]);
         expect(sorted1).toEqual(sorted2);
-      })
+      }),
     );
   });
 
@@ -1102,7 +1102,7 @@ describe('customSort property-based tests', () => {
         for (let i = 1; i < sorted.length; i++) {
           expect(sorted[i]).toBeGreaterThanOrEqual(sorted[i - 1]);
         }
-      })
+      }),
     );
   });
 });

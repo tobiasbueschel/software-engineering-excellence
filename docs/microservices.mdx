@@ -781,7 +781,7 @@ class OrderEventHandler {
         await this.db.orderStats.updateOne(
           { userId: event.data.userId },
           { $inc: { totalOrders: 1 } },
-          { upsert: true }
+          { upsert: true },
         );
         break;
     }
@@ -834,7 +834,7 @@ class ServiceRegistry {
     const instances = this.services.get(serviceName) || [];
     this.services.set(
       serviceName,
-      instances.filter((i) => i.id !== instanceId)
+      instances.filter((i) => i.id !== instanceId),
     );
   }
 
@@ -1101,7 +1101,7 @@ class HealthCheck {
       this.checks.map(async (check) => ({
         name: check.name,
         status: await check.checkFn(),
-      }))
+      })),
     );
 
     const health = {
@@ -1378,7 +1378,7 @@ class AuthService {
         iat: Date.now(),
       },
       this.secretKey,
-      { expiresIn: '1h' }
+      { expiresIn: '1h' },
     );
   }
 
@@ -1469,7 +1469,7 @@ class SecureServiceClient {
           let data = '';
           res.on('data', (chunk) => (data += chunk));
           res.on('end', () => resolve(JSON.parse(data)));
-        }
+        },
       );
 
       req.on('error', reject);

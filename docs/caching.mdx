@@ -128,7 +128,7 @@ app.use(
   express.static('public', {
     maxAge: '1y', // Cache for 1 year
     immutable: true,
-  })
+  }),
 );
 
 // API responses with short-term caching
@@ -296,7 +296,7 @@ async function getUserProfile(userId) {
     async () => {
       return await database.users.findById(userId);
     },
-    600
+    600,
   ); // Cache for 10 minutes
 }
 ```
@@ -642,7 +642,7 @@ class RefreshAheadCache {
         value: value,
         timestamp: Date.now(),
       },
-      this.ttl
+      this.ttl,
     );
     return value;
   }
@@ -661,7 +661,7 @@ const cache = new RefreshAheadCache(
   redisCache,
   async (key) => await database.loadData(key),
   3600, // 1 hour TTL
-  0.75 // Refresh when 75% of TTL has elapsed
+  0.75, // Refresh when 75% of TTL has elapsed
 );
 ```
 

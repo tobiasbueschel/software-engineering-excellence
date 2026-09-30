@@ -674,7 +674,7 @@ const logger = createLogger({
     timestamp(),
     printf(({ timestamp, level, message, ...meta }) => {
       return `${timestamp} ${level}: ${message} ${JSON.stringify(meta)}`;
-    })
+    }),
   ),
   transports: [new transports.Console()],
 });

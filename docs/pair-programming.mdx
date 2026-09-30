@@ -531,7 +531,7 @@ interface RateLimitResult {
 export async function checkRateLimit(
   userId: string,
   limit: number = 100,
-  windowSeconds: number = 60
+  windowSeconds: number = 60,
 ): Promise<RateLimitResult> {
   const key = `ratelimit:${userId}`;
   const now = Date.now();

@@ -183,7 +183,7 @@ async function generateSocialImage(svgFileName) {
             fill="${TEXT_PRIMARY}">
         ${line}
       </text>
-    `
+    `,
       )
       .join('');
 
@@ -197,7 +197,7 @@ async function generateSocialImage(svgFileName) {
             fill="${TEXT_SECONDARY}">
         ${line}
       </text>
-    `
+    `,
       )
       .join('');
 
