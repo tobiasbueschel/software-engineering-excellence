@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
-    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.4",
     "cspell": "^10.3.6",
     "gray-matter": "^4.0.3",
     "husky": "^9.1.7",
